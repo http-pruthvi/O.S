@@ -221,3 +221,29 @@ void vga_writestring(const char* str) {
     if (!str) return;
     vga_write(str, strlen(str));
 }
+
+/*
+ * vga_put_at:
+ * Writes a null-terminated string directly to the VGA text buffer starting at (x, y)
+ * without altering the active text cursor coordinates (vga_row, vga_column) or
+ * moving the hardware blinking cursor.
+ *
+ * Parameters:
+ *   x     - Horizontal column coordinate (0 to VGA_WIDTH - 1)
+ *   y     - Vertical row coordinate (0 to VGA_HEIGHT - 1)
+ *   str   - Null-terminated string to display
+ *   color - VGA attribute byte (foreground and background color)
+ */
+void vga_put_at(size_t x, size_t y, const char* str, uint8_t color) {
+    if (!str || y >= VGA_HEIGHT) {
+        return;
+    }
+
+    size_t col = x;
+    for (size_t i = 0; str[i] != '\0' && col < VGA_WIDTH; i++) {
+        size_t index = y * VGA_WIDTH + col;
+        vga_buffer[index] = vga_entry((unsigned char)str[i], color);
+        col++;
+    }
+}
+

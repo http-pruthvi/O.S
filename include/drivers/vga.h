@@ -72,4 +72,11 @@ void vga_enable_cursor(uint8_t cursor_start, uint8_t cursor_end);
 /* Disables hardware blinking cursor */
 void vga_disable_cursor(void);
 
+/*
+ * vga_put_at:
+ * Writes a string directly at coordinates (x, y) with the specified color attribute byte.
+ * Does NOT move or modify the hardware cursor or active text cursor position.
+ */
+void vga_put_at(size_t x, size_t y, const char* str, uint8_t color);
+
 #endif /* DRIVERS_VGA_H */
