@@ -136,7 +136,14 @@ void isr_handler(registers_t* regs) {
         return;
     }
 
-    /* All vectors 0-31 are fatal CPU exceptions: display Kernel Panic Screen */
+    /* Vector 14: Dedicated Page Fault handler */
+    if (regs->int_no == 14) {
+        extern void page_fault_handler(registers_t* regs);
+        page_fault_handler(regs);
+        return;
+    }
+
+    /* All other vectors 0-31 are fatal CPU exceptions: display Kernel Panic Screen */
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_RED);
     kprintf("\n============================ KERNEL PANIC ============================\n");
 
