@@ -2,6 +2,9 @@
 # Makefile - 32-bit x86 Hobby OS Kernel (Milestone 1)
 # ==============================================================================
 
+# Ensure compiler is in PATH for all shells
+export PATH := $(HOME)/opt/i686-elf/bin:$(PATH)
+
 CC      := i686-elf-gcc
 AS      := nasm
 CFLAGS  := -std=gnu11 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pic -m32 -Iinclude
