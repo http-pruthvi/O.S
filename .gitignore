@@ -1,0 +1,6 @@
+# Build output directories and binaries
+build/
+*.o
+*.bin
+*.iso
+*.log
