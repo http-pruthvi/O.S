@@ -26,7 +26,8 @@ myos/
 │   ├── PROJECT_BRIEF.md    # Reference copy of the project brief
 │   ├── architecture.md     # Boot flow sequence and memory maps
 │   ├── milestone-1.md      # Milestone 1 report and viva Q&A
-│   └── milestone-2.md      # Milestone 2 report and viva Q&A
+│   ├── milestone-2.md      # Milestone 2 report and viva Q&A
+│   └── milestone-3.md      # Milestone 3 report and viva Q&A
 ├── include/                # Header files
 │   ├── arch/               # Architecture & hardware abstraction
 │   │   ├── gdt.h           # Global Descriptor Table
@@ -39,6 +40,11 @@ myos/
 │   │   ├── vga.h           # VGA 80x25 text mode driver (with vga_put_at)
 │   │   ├── timer.h         # PIT 8254 timer driver (100 Hz, uptime)
 │   │   └── keyboard.h      # PS/2 keyboard driver (Scancode Set 1)
+│   ├── mm/                 # Memory Management
+│   │   ├── memmap.h        # Multiboot memory map parser
+│   │   ├── pmm.h           # Bitmap Physical Memory Manager
+│   │   ├── paging.h        # Two-Level 32-bit Paging & Page Faults
+│   │   └── heap.h          # Dynamic Kernel Heap (kmalloc, kfree)
 │   ├── kernel/
 │   │   └── multiboot.h     # Multiboot 1 struct and flag definitions
 │   └── lib/
@@ -57,6 +63,11 @@ myos/
     │   ├── isr.c / isr_stubs.asm   # CPU exception panic dump & int 0x80
     │   ├── pic.c                   # 8259 PIC remap & spurious IRQ handling
     │   └── irq.c / irq_stubs.asm   # IRQ dispatcher & assembly stubs
+    ├── mm/
+    │   ├── memmap.c                # Memory map traversal & buffering
+    │   ├── pmm.c                   # 128 KB bitmap frame allocator
+    │   ├── paging.c / paging_asm.asm # Page Directory & CR3/CR0.PG
+    │   └── heap.c                  # Dynamic heap (split & coalesce)
     ├── boot/
     │   └── boot.asm        # Multiboot header, 16 KB stack, _start entry
     ├── drivers/

@@ -121,3 +121,34 @@ All kernel messages passed to `kprintf()` are mirrored across two hardware paths
 >
 > In **Milestone 5**, when Ring 3 user mode is introduced, the CPU will automatically push `useresp` and `ss` upon entering Ring 0 from Ring 3. The `registers_t` structure will be extended in Milestone 5 to include those fields.
 
+---
+
+## 5. Memory Management Architecture (Milestone 3)
+
+```text
+Physical Memory (PMM)                Virtual Memory (Paging)
++----------------------------+       +----------------------------+ 0xFFFFFFFF
+| Available Frames (Type 1)  |       | Unmapped Address Space     |
+| (Managed by 128KB Bitmap)  |       +----------------------------+ 0xD4000000 (64MB)
++----------------------------+       | Virtual Kernel Heap        |
+| Reserved Bootloader & Mmap |  ==>  | (Grows upwards on demand)  |
++----------------------------+       +----------------------------+ 0xD0000000 (Heap Start)
+| Kernel Image & .bss Bitmap |       | Unmapped Address Space     |
++----------------------------+       +----------------------------+ 0x10000000 (256MB Cap)
+| BIOS ROM & VGA Buffer      |       | Identity-Mapped RAM        |
++----------------------------+       | (Virtual == Physical)      |
+| Frame 0 (0x0 - 0xFFF)      |       +----------------------------+ 0x00001000 (4KB)
++----------------------------+ 0x0   | UNMAPPED Page 0 (NULL Trap)|
+                                     +----------------------------+ 0x00000000
+```
+
+* **PMM (Bitmap)**: Statically tracks 1,048,576 4 KB frames using 131,072 bytes (128 KB) in `.bss`.
+* **Two-Level Paging**:
+  * Page Directory points to 32–64 Page Tables mapping physical memory.
+  * Identity maps all detected physical RAM (capped at 256 MB) so page-table frames allocated from anywhere in RAM can be written through their physical addresses.
+  * Page 0 is left unmapped so any zero-pointer dereference immediately causes a hardware Page Fault (`#PF`).
+* **Kernel Heap**:
+  * Base virtual address `0xD0000000`, expands page-by-page up to 64 MB.
+  * 24-byte headers (`magic`, `size`, `is_free`, `padding`, `next`, `prev`), guaranteed 8-byte payload alignment, bi-directional coalescing on `kfree()`.
+
+
