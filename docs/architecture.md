@@ -23,10 +23,15 @@ sequenceDiagram
     BootStub->>Kernel: 5. Pushes EBX, pushes EAX, calls kernel_main(magic, mboot_info)
     Kernel->>Drivers: 6. Calls serial_init() [115200 8N1 on COM1]
     Kernel->>Drivers: 7. Calls vga_init() [Clears 80x25 buffer at 0xB8000, homes cursor]
-    Kernel->>Kernel: 8. Verifies magic == 0x2BADB002 (halts on mismatch)
-    Kernel->>Drivers: 9. kprintf() outputs banner, memory info, kernel bounds to BOTH sinks
-    Kernel->>Drivers: 10. Runs 28-line scrolling test; verifies buffer line-shifting
-    Kernel->>BootStub: 11. Enters safe halt loop (cli; hlt)
+    Kernel->>Kernel: 8. Verifies magic == 0x2BADB002
+    Kernel->>Kernel: 9. gdt_init() [Flushes GDT: code 0x08, data 0x10]
+    Kernel->>Kernel: 10. idt_init() & isr_init() [256 gates, exceptions 0-31, int 0x80]
+    Kernel->>Kernel: 11. pic_init() [Remap master 32-39, slave 40-47, spurious filters]
+    Kernel->>Kernel: 12. irq_init() [Installs IRQ stubs 32-47]
+    Kernel->>Drivers: 13. timer_init(100) [PIT Channel 0 @ 100 Hz, unmasks IRQ 0]
+    Kernel->>Drivers: 14. keyboard_init() [PS/2 IRQ 1, ring buffer, unmasks IRQ 1]
+    Kernel->>Kernel: 15. STI enables CPU hardware interrupts
+    Kernel->>Drivers: 16. Enters interactive typing echo console loop & test hooks
 ```
 
 ---
@@ -96,3 +101,23 @@ All kernel messages passed to `kprintf()` are mirrored across two hardware paths
 
 1. **VGA Path**: Writes 16-bit entries (ASCII character + color attribute byte) directly to physical memory at `0xB8000`. Handles line feeds (`\n`), carriage returns (`\r`), tab stops (`\t`), backspaces (`\b`), line scrolling (rows 1..24 shifted up), and updates the blinking hardware CRT cursor via I/O ports `0x3D4` / `0x3D5`.
 2. **Serial Path**: Writes ASCII bytes directly to COM1 base port `0x3F8`. Polling Line Status Register (`0x3FD`) bit 5 guarantees bytes are not dropped. Bare `\n` is converted to CRLF (`\r\n`) so log files viewed in Windows editors format correctly.
+
+---
+
+## 4. Descriptor Tables & Interrupt Architecture (Milestone 2)
+
+```text
++-------------------+      +-------------------+      +-------------------+
+|     GDT (4 GB)    |      |    IDT (256)      |      |   PIC (Remapped)  |
+| 0x00: Null        |      | 0-31: Exceptions  |      | Master: 32 - 39   |
+| 0x08: Kernel Code |      | 32-47: IRQs       |      | Slave:  40 - 47   |
+| 0x10: Kernel Data |      | 128: Software INT |      | Cascaded at IRQ 2 |
++-------------------+      +-------------------+      +-------------------+
+```
+
+### Stack Frame Layout Note (`registers_t`)
+> **Important Architectural Note**:
+> In Milestone 2, the kernel executes entirely in **Ring 0**. Because interrupts occur without a change in privilege level, the x86 CPU pushes only `EFLAGS`, `CS`, and `EIP` upon interrupt entry. The CPU does **NOT** push `useresp` or `ss` onto the stack.
+>
+> In **Milestone 5**, when Ring 3 user mode is introduced, the CPU will automatically push `useresp` and `ss` upon entering Ring 0 from Ring 3. The `registers_t` structure will be extended in Milestone 5 to include those fields.
+

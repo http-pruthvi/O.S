@@ -25,11 +25,20 @@ myos/
 ├── docs/                   # Viva prep, reports, and architecture diagrams
 │   ├── PROJECT_BRIEF.md    # Reference copy of the project brief
 │   ├── architecture.md     # Boot flow sequence and memory maps
-│   └── milestone-1.md      # Milestone 1 report and viva Q&A
+│   ├── milestone-1.md      # Milestone 1 report and viva Q&A
+│   └── milestone-2.md      # Milestone 2 report and viva Q&A
 ├── include/                # Header files
+│   ├── arch/               # Architecture & hardware abstraction
+│   │   ├── gdt.h           # Global Descriptor Table
+│   │   ├── idt.h           # Interrupt Descriptor Table
+│   │   ├── isr.h           # CPU Exception handlers & registers_t frame
+│   │   ├── pic.h           # 8259A PIC initialization & EOI
+│   │   └── irq.h           # Hardware IRQ dispatch table
 │   ├── drivers/
 │   │   ├── serial.h        # COM1 UART 16550 serial driver
-│   │   └── vga.h           # VGA 80x25 text mode driver
+│   │   ├── vga.h           # VGA 80x25 text mode driver (with vga_put_at)
+│   │   ├── timer.h         # PIT 8254 timer driver (100 Hz, uptime)
+│   │   └── keyboard.h      # PS/2 keyboard driver (Scancode Set 1)
 │   ├── kernel/
 │   │   └── multiboot.h     # Multiboot 1 struct and flag definitions
 │   └── lib/
@@ -42,13 +51,21 @@ myos/
 │       └── grub/
 │           └── grub.cfg    # GRUB boot menu entry configuration
 └── src/                    # Implementation source code
+    ├── arch/
+    │   ├── gdt.c / gdt_flush.asm   # GDT setup and far jump reload
+    │   ├── idt.c                   # IDT setup and lidt
+    │   ├── isr.c / isr_stubs.asm   # CPU exception panic dump & int 0x80
+    │   ├── pic.c                   # 8259 PIC remap & spurious IRQ handling
+    │   └── irq.c / irq_stubs.asm   # IRQ dispatcher & assembly stubs
     ├── boot/
     │   └── boot.asm        # Multiboot header, 16 KB stack, _start entry
     ├── drivers/
     │   ├── serial.c        # COM1 driver (115200 8N1, FIFO enabled)
-    │   └── vga.c           # VGA driver (cursor, scrolling, colors)
+    │   ├── vga.c           # VGA driver (cursor, scrolling, vga_put_at)
+    │   ├── timer.c         # PIT timer (100 Hz, uptime screen clock)
+    │   └── keyboard.c      # PS/2 keyboard (scancode set 1, ring buffer)
     ├── kernel/
-    │   └── kernel.c        # kernel_main initialization and demo
+    │   └── kernel.c        # kernel_main init order, echo loop & test hooks
     └── lib/
         ├── kprintf.c       # kprintf parser (%c, %s, %d, %u, %x, %p)
         └── string.c        # strlen, memset, memcpy, memcmp
