@@ -107,6 +107,36 @@ static void keyboard_handler(registers_t* regs) {
         return;
     }
 
+    if (scancode == 0x3D) {
+        /* F3 key pressed */
+        buffer_put((char)KEY_F3);
+        return;
+    }
+
+    if (scancode == 0x3E) {
+        /* F4 key pressed */
+        buffer_put((char)KEY_F4);
+        return;
+    }
+
+    if (scancode == 0x3F) {
+        /* F5 key pressed */
+        buffer_put((char)KEY_F5);
+        return;
+    }
+
+    if (scancode == 0x40) {
+        /* F6 key pressed */
+        buffer_put((char)KEY_F6);
+        return;
+    }
+
+    if (scancode == 0x41) {
+        /* F7 key pressed */
+        buffer_put((char)KEY_F7);
+        return;
+    }
+
     /* 4. Character translation */
     if (scancode < 128) {
         char unshifted = scancode_unshifted[scancode];

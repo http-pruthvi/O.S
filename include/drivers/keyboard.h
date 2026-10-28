@@ -20,6 +20,11 @@
 /* Special Non-ASCII Function Keys */
 #define KEY_F1 0x81
 #define KEY_F2 0x82
+#define KEY_F3 0x83
+#define KEY_F4 0x84
+#define KEY_F5 0x85
+#define KEY_F6 0x86
+#define KEY_F7 0x87
 
 /* Initializes PS/2 keyboard driver, unmasks IRQ 1 */
 void keyboard_init(void);
