@@ -1,6 +1,13 @@
 #include "kernel/multiboot.h"
+#include "arch/gdt.h"
+#include "arch/idt.h"
+#include "arch/isr.h"
+#include "arch/pic.h"
+#include "arch/irq.h"
 #include "drivers/vga.h"
 #include "drivers/serial.h"
+#include "drivers/timer.h"
+#include "drivers/keyboard.h"
 #include "lib/kprintf.h"
 #include "lib/types.h"
 
@@ -20,84 +27,161 @@ static void halt_system(void) {
 }
 
 /*
+ * trigger_divide_by_zero:
+ * Test hook for F1 key.
+ * Uses inline assembly to force a divide-by-zero that cannot be optimized away by GCC.
+ */
+static void trigger_divide_by_zero(void) {
+    kprintf("\n[TEST HOOK] F1 pressed: Triggering Divide-by-Zero exception (#DE)...\n");
+    __asm__ volatile (
+        "mov $0, %%ecx\n\t"
+        "div %%ecx\n\t"
+        : : : "eax", "edx", "ecx"
+    );
+}
+
+/*
+ * trigger_software_interrupt:
+ * Test hook for F2 key.
+ * Executes 'int 0x80' to demonstrate a software interrupt gate returning cleanly.
+ */
+static void trigger_software_interrupt(void) {
+    kprintf("\n[TEST HOOK] F2 pressed: Triggering software interrupt (int 0x80)...\n");
+    __asm__ volatile ("int $0x80");
+}
+
+/*
  * kernel_main:
- * Kernel Entry Point called from boot.asm.
+ * Milestone 2 Kernel Entry Point.
  *
- * Parameters:
- *   magic      - Value in EAX passed by bootloader (expected: 0x2BADB002)
- *   mboot_info - Pointer in EBX to Multiboot information structure
- *
- * Execution flow:
- * 1. Initialize COM1 serial logging.
- * 2. Initialize VGA text display (80x25, address 0xB8000).
- * 3. Validate bootloader magic signature.
- * 4. Display Welcome banner and project details.
- * 5. Parse and display Multiboot memory statistics.
- * 6. Display kernel binary memory boundaries from linker script.
- * 7. Demonstrate and verify VGA scrolling functionality.
+ * Sequence:
+ * 1. Initialize serial & VGA
+ * 2. Validate Multiboot magic
+ * 3. Initialize GDT, IDT, ISRs, PIC, IRQs, Timer, Keyboard
+ * 4. Enable CPU interrupts (STI)
+ * 5. Enter interactive keystroke echo loop with live uptime logging & test hooks
  */
 void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
-    /* 1. Initialize serial port (COM1) for host logging */
+    /* Step 1: Initialize serial port (COM1) */
     serial_init();
 
-    /* 2. Initialize VGA text mode screen */
+    /* Step 2: Initialize VGA text display */
     vga_init();
 
-    /* 3. Verify that the kernel was booted by a Multiboot-compliant bootloader (GRUB) */
+    /* Step 3: Validate bootloader magic */
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
         vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
         kprintf("\n[PANIC] Invalid Multiboot magic: 0x%x (expected 0x%x)\n",
                 magic, MULTIBOOT_BOOTLOADER_MAGIC);
-        kprintf("Halting system.\n");
         halt_system();
     }
 
-    /* 4. Display kernel welcome banner */
+    /* Welcome Banner */
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
     kprintf("================================================================\n");
-    kprintf("        MyOS - 32-bit x86 Protected Mode Kernel (v0.1.0)        \n");
-    kprintf("           B.Tech Computer Engineering Final Year Project       \n");
-    kprintf("================================================================\n\n");
+    kprintf("   MyOS - 32-bit x86 Kernel (Milestone 2: Interrupts & Drivers) \n");
+    kprintf("================================================================\n");
 
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    kprintf("[BOOT] Bootloader: GRUB (Multiboot 1 compliant)\n");
-    kprintf("[BOOT] Multiboot magic: 0x%x [VALID]\n", magic);
+    kprintf("[OK] Serial COM1 initialized (115200 8N1)\n");
+    kprintf("[OK] VGA text mode initialized (80x25 at 0xB8000)\n");
 
-    /* 5. Parse memory info from Multiboot structure */
+    /* Memory Info from Multiboot */
     if (mboot_info && (mboot_info->flags & MULTIBOOT_INFO_FLAG_MEM)) {
-        uint32_t lower_kb = mboot_info->mem_lower;
-        uint32_t upper_kb = mboot_info->mem_upper;
-        uint32_t total_mb = (lower_kb + upper_kb + 1024) / 1024;
-
-        kprintf("[MEM]  Lower memory:  %u KB (conventional)\n", lower_kb);
-        kprintf("[MEM]  Upper memory:  %u KB (extended)\n", upper_kb);
-        kprintf("[MEM]  Total RAM:     %u MB\n", total_mb);
-    } else {
-        kprintf("[MEM]  Warning: Multiboot memory info not provided by bootloader\n");
+        uint32_t total_mb = (mboot_info->mem_lower + mboot_info->mem_upper + 1024) / 1024;
+        kprintf("[OK] RAM detected: %u MB (Lower: %u KB, Upper: %u KB)\n",
+                total_mb, mboot_info->mem_lower, mboot_info->mem_upper);
     }
 
-    /* 6. Display kernel memory boundaries from linker symbols */
-    uintptr_t kstart = (uintptr_t)_kernel_start;
-    uintptr_t kend   = (uintptr_t)_kernel_end;
-    uint32_t  ksize  = (uint32_t)(kend - kstart);
+    /* Step 4: Initialize Global Descriptor Table (GDT) */
+    gdt_init();
+    kprintf("[OK] GDT initialized (Flat 4GB code & data segments)\n");
 
-    kprintf("[INFO] Kernel start:  %p\n", (void*)kstart);
-    kprintf("[INFO] Kernel end:    %p\n", (void*)kend);
-    kprintf("[INFO] Kernel size:   %u bytes (%u KB)\n\n", ksize, (ksize + 1023) / 1024);
+    /* Step 5: Initialize Interrupt Descriptor Table (IDT) */
+    idt_init();
+    kprintf("[OK] IDT initialized (256 gates cleared)\n");
 
-    /* 7. Verify scrolling functionality by printing > 25 lines */
+    /* Step 6: Install CPU Exception Service Routines */
+    isr_init();
+    kprintf("[OK] CPU exception handlers registered (Vectors 0-31, 128)\n");
+
+    /* Step 7: Remap 8259 PIC (Master: 32-39, Slave: 40-47) */
+    pic_init();
+    kprintf("[OK] 8259 PIC remapped (Master: 32-39, Slave: 40-47)\n");
+
+    /* Step 8: Initialize IRQ Dispatcher */
+    irq_init();
+    kprintf("[OK] Hardware IRQ dispatch table initialized\n");
+
+    /* Step 9: Initialize Programmable Interval Timer (100 Hz) */
+    timer_init(100);
+    kprintf("[OK] PIT timer initialized (100 Hz, Channel 0)\n");
+
+    /* Step 10: Initialize PS/2 Keyboard Driver */
+    keyboard_init();
+    kprintf("[OK] PS/2 keyboard driver initialized (IRQ 1)\n");
+
+    /* Step 11: Enable CPU hardware interrupts */
+    __asm__ volatile ("sti");
+    kprintf("[OK] Hardware interrupts enabled (STI)\n\n");
+
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-    kprintf("[TEST] Running 28-line scrolling verification test...\n");
-
+    kprintf(">>> Interactive Echo Console Ready <<<\n");
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-    for (int i = 1; i <= 28; i++) {
-        kprintf("  [Line %d/28] VGA & Serial dual-logging scrolling test\n", i);
+    kprintf("Instructions:\n");
+    kprintf("  - Type any text: echoed to VGA and logged to COM1 serial.\n");
+    kprintf("  - Press [F1]: Triggers Divide-by-Zero exception (#DE panic dump).\n");
+    kprintf("  - Press [F2]: Triggers Software Interrupt (int 0x80 test hook).\n\n");
+
+    /* Track last uptime logged to serial (log every 5 seconds) */
+    uint32_t last_serial_uptime = 0;
+
+    /* Step 12: Interactive Console Loop */
+    while (1) {
+        /* Check if 5 seconds have elapsed to log uptime to serial */
+        uint32_t current_uptime = timer_get_uptime_sec();
+        if (current_uptime >= last_serial_uptime + 5) {
+            last_serial_uptime = current_uptime;
+            /* Log exclusively to COM1 serial without cluttering the interactive screen */
+            char log_msg[64];
+            (void)log_msg;
+            serial_writestring("[UPTIME] System running: ");
+            /* Format uptime seconds manually to avoid screen pollution */
+            uint32_t s = current_uptime;
+            char s_buf[16];
+            int s_idx = 0;
+            if (s == 0) {
+                s_buf[s_idx++] = '0';
+            } else {
+                while (s > 0) {
+                    s_buf[s_idx++] = (char)('0' + (s % 10));
+                    s /= 10;
+                }
+            }
+            for (int i = s_idx - 1; i >= 0; i--) {
+                serial_putchar(s_buf[i]);
+            }
+            serial_writestring(" seconds\n");
+        }
+
+        /* Check for keystrokes */
+        if (keyboard_has_char()) {
+            char c = keyboard_getchar();
+
+            if ((unsigned char)c == KEY_F1) {
+                trigger_divide_by_zero();
+            } else if ((unsigned char)c == KEY_F2) {
+                trigger_software_interrupt();
+            } else if (c == '\n') {
+                kprintf("\n");
+            } else if (c == '\b') {
+                kprintf("\b");
+            } else {
+                kprintf("%c", c);
+            }
+        } else {
+            /* Sleep until next hardware interrupt */
+            __asm__ volatile ("hlt");
+        }
     }
-
-    vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-    kprintf("\n[SUCCESS] Milestone 1 Boot & Hello World completed successfully!\n");
-    kprintf("[READY]   System idle. Awaiting next milestone commands.\n");
-
-    /* Halt CPU safely */
-    halt_system();
 }
