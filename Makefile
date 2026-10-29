@@ -26,7 +26,7 @@ ASM_OBJS := $(patsubst src/%.asm, $(BUILD_DIR)/%.o, $(ASM_SRCS))
 C_OBJS   := $(patsubst src/%.c, $(BUILD_DIR)/%.o, $(C_SRCS))
 OBJS     := $(ASM_OBJS) $(C_OBJS)
 
-.PHONY: all build iso deploy clean check-multiboot
+.PHONY: all build iso deploy clean check-multiboot run
 
 all: build
 
@@ -72,6 +72,12 @@ deploy: $(ISO)
 	@mkdir -p /mnt/c/os
 	cp $(ISO) $(DEPLOY_TO)
 	@echo "[DEPLOY] Successfully deployed ISO to $(DEPLOY_TO)"
+
+# Build ISO and automatically handle poweroff, ISO copy, and VM launch via run.ps1
+run: $(ISO)
+	@mkdir -p /mnt/c/os
+	cp scripts/run.ps1 /mnt/c/os/run.ps1
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\\os\\run.ps1" -SourceIso "$$(wslpath -w $(ISO))"
 
 clean:
 	rm -rf $(BUILD_DIR)
