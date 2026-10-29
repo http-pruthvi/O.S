@@ -24,7 +24,9 @@ static heap_block_t* heap_expand(size_t bytes) {
     size_t pages = (bytes + PAGE_SIZE - 1) / PAGE_SIZE;
     size_t actual_bytes = pages * PAGE_SIZE;
 
-    if (heap_curr_end + actual_bytes > HEAP_START_ADDR + HEAP_MAX_SIZE) {
+    /* Guard against integer wrap-around and expansion beyond max virtual ceiling */
+    if (actual_bytes > HEAP_MAX_SIZE ||
+        heap_curr_end + actual_bytes > HEAP_START_ADDR + HEAP_MAX_SIZE) {
         kprintf("[HEAP] Error: Exceeded maximum heap capacity of %u MB!\n",
                 HEAP_MAX_SIZE / (1024 * 1024));
         return NULL;
@@ -104,6 +106,13 @@ void heap_init(void) {
  */
 void* kmalloc(size_t size) {
     if (size == 0) {
+        return NULL;
+    }
+
+    /* Reject requests exceeding total max heap size upfront to prevent overflow */
+    if (size > HEAP_MAX_SIZE) {
+        kprintf("[HEAP] Error: Requested allocation (%u MB) exceeds max heap capacity (%u MB)!\n",
+                (uint32_t)(size / (1024 * 1024)), (uint32_t)(HEAP_MAX_SIZE / (1024 * 1024)));
         return NULL;
     }
 
@@ -262,6 +271,14 @@ void heap_stats(size_t* used_bytes, size_t* free_bytes, size_t* block_count) {
     if (used_bytes)  *used_bytes  = u;
     if (free_bytes)  *free_bytes  = f;
     if (block_count) *block_count = c;
+}
+
+/*
+ * heap_get_break:
+ * Returns the current virtual address break of the heap.
+ */
+uintptr_t heap_get_break(void) {
+    return heap_curr_end;
 }
 
 /*

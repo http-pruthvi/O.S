@@ -25,6 +25,7 @@
 #define KEY_F5 0x85
 #define KEY_F6 0x86
 #define KEY_F7 0x87
+#define KEY_F8 0x42  /* PS/2 Scancode Set 1 make code for F8 */
 
 /* Initializes PS/2 keyboard driver, unmasks IRQ 1 */
 void keyboard_init(void);

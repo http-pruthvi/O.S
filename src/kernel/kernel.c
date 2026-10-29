@@ -211,6 +211,181 @@ static void trigger_unmapped_page_fault(void) {
     *unmapped_ptr = 0xCAFEBABE;
 }
 
+#define HEAP_GROWTH_TEST_BLOCKS 10
+#define HEAP_GROWTH_TEST_BLOCK_SIZE (20 * 1024) /* 20 KB per block = 200 KB total */
+#define HEAP_OVERSIZED_TEST_SIZE (100 * 1024 * 1024) /* 100 MB request */
+
+/*
+ * test_heap_growth:
+ * Test hook for F8 key.
+ * Exercises dynamic heap expansion (heap_expand) by allocating 200 KB total
+ * (10 blocks of 20 KB), which forces the kernel heap to expand well past its
+ * initial 64 KB boundary by requesting frames from PMM and mapping them.
+ * Verifies byte pattern integrity, heap break growth, PMM frame consumption,
+ * page table mappings via paging_get_phys(), reverse-order kfree coalescing,
+ * and out-of-bounds allocation rejection.
+ */
+static void test_heap_growth(void) {
+    vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
+    kprintf("\n>>> [TEST HOOK] F8 pressed: Running Heap Growth Test (Past 64 KB) <<<\n");
+
+    /* Sub-check A: Record initial heap and PMM statistics before growth */
+    uintptr_t break_before = heap_get_break();
+    size_t used_before = 0, free_before = 0, count_before = 0;
+    heap_stats(&used_before, &free_before, &count_before);
+    uint32_t pmm_free_before = pmm_free_frames();
+
+    kprintf("  [BEFORE] Heap break: %p | Free: %u B | Blocks: %u | PMM free frames: %u\n",
+            (void*)break_before, (uint32_t)free_before, (uint32_t)count_before, pmm_free_before);
+
+    /* Sub-check B: Allocate 10 blocks of 20 KB (forces heap growth past 64 KB) */
+    void* blocks[HEAP_GROWTH_TEST_BLOCKS];
+    bool alloc_ok = true;
+
+    kprintf("  [ALLOC]  Allocating %d blocks of %u KB each (%u KB total)...\n",
+            HEAP_GROWTH_TEST_BLOCKS, HEAP_GROWTH_TEST_BLOCK_SIZE / 1024,
+            (HEAP_GROWTH_TEST_BLOCKS * HEAP_GROWTH_TEST_BLOCK_SIZE) / 1024);
+
+    for (int i = 0; i < HEAP_GROWTH_TEST_BLOCKS; i++) {
+        blocks[i] = kmalloc(HEAP_GROWTH_TEST_BLOCK_SIZE);
+        if (!blocks[i]) {
+            kprintf("  [FAIL] kmalloc returned NULL for block #%d\n", i);
+            alloc_ok = false;
+            break;
+        }
+
+        /* Verify 8-byte alignment required by system architecture */
+        if (((uintptr_t)blocks[i] & 0x7) != 0) {
+            kprintf("  [FAIL] Block #%d (%p) is not 8-byte aligned\n", i, blocks[i]);
+            alloc_ok = false;
+            break;
+        }
+    }
+
+    if (!alloc_ok) {
+        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        kprintf(">>> [FAIL] Heap allocation failed during growth! <<<\n");
+        vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+        /* Clean up any allocated blocks */
+        for (int i = 0; i < HEAP_GROWTH_TEST_BLOCKS; i++) {
+            if (blocks[i]) kfree(blocks[i]);
+        }
+        return;
+    }
+
+    /* Fill each block with a unique deterministic byte pattern */
+    for (int i = 0; i < HEAP_GROWTH_TEST_BLOCKS; i++) {
+        uint8_t* p = (uint8_t*)blocks[i];
+        for (size_t j = 0; j < HEAP_GROWTH_TEST_BLOCK_SIZE; j++) {
+            /* Distinct formula per block ensures cross-block leaks are detected */
+            p[j] = (uint8_t)((i * 37 + j) & 0xFF);
+        }
+    }
+
+    /* Read back and verify byte pattern across all 10 blocks */
+    bool pattern_ok = true;
+    for (int i = 0; i < HEAP_GROWTH_TEST_BLOCKS; i++) {
+        uint8_t* p = (uint8_t*)blocks[i];
+        for (size_t j = 0; j < HEAP_GROWTH_TEST_BLOCK_SIZE; j++) {
+            uint8_t expected = (uint8_t)((i * 37 + j) & 0xFF);
+            if (p[j] != expected) {
+                kprintf("  [FAIL] Data mismatch in block #%d at offset %u (expected 0x%x, got 0x%x)\n",
+                        i, (uint32_t)j, expected, p[j]);
+                pattern_ok = false;
+                break;
+            }
+        }
+        if (!pattern_ok) break;
+    }
+
+    if (pattern_ok) {
+        kprintf("  [PASS] All 10 blocks verified (8-byte aligned, data integrity intact).\n");
+    } else {
+        kprintf("  [FAIL] Memory integrity corruption detected!\n");
+    }
+
+    /* Sub-check C: Record stats after growth */
+    uintptr_t break_after = heap_get_break();
+    uint32_t pmm_free_after = pmm_free_frames();
+    uint32_t growth_bytes = (uint32_t)(break_after - break_before);
+    uint32_t pmm_frame_delta = pmm_free_before - pmm_free_after;
+
+    kprintf("  [AFTER]  Heap break: %p (increased by %u B / %u pages)\n",
+            (void*)break_after, growth_bytes, growth_bytes / PAGE_SIZE_4K);
+    kprintf("  [AFTER]  PMM free frames: %u (decreased by %u frames)\n",
+            pmm_free_after, pmm_frame_delta);
+
+    bool growth_ok = (break_after > break_before) && (pmm_free_after < pmm_free_before);
+    if (growth_ok) {
+        kprintf("  [PASS] Heap break advanced and PMM free frames decreased.\n");
+    } else {
+        kprintf("  [FAIL] Heap break did not expand or PMM frame count did not decrease!\n");
+    }
+
+    /* Sub-check D: Verify first and last heap pages are actively mapped in paging tables */
+    uintptr_t first_page_virt = HEAP_START_ADDR;
+    uintptr_t last_page_virt = break_after - PAGE_SIZE_4K;
+    uintptr_t first_page_phys = paging_get_phys(first_page_virt);
+    uintptr_t last_page_phys = paging_get_phys(last_page_virt);
+
+    kprintf("  [PAGE]   First heap page (%p) mapped to physical: %p\n",
+            (void*)first_page_virt, (void*)first_page_phys);
+    kprintf("  [PAGE]   Last heap page  (%p) mapped to physical: %p\n",
+            (void*)last_page_virt, (void*)last_page_phys);
+
+    bool pages_mapped_ok = (first_page_phys != 0) && (last_page_phys != 0);
+    if (pages_mapped_ok) {
+        kprintf("  [PASS] Both first and last heap pages verified as present in page tables.\n");
+    } else {
+        kprintf("  [FAIL] Heap boundary virtual pages are unmapped in page tables!\n");
+    }
+
+    /* Sub-check E: Free all blocks in reverse order and verify coalescing */
+    kprintf("  [FREE]   Freeing all 10 blocks in reverse order...\n");
+    for (int i = HEAP_GROWTH_TEST_BLOCKS - 1; i >= 0; i--) {
+        if (blocks[i]) {
+            kfree(blocks[i]);
+            blocks[i] = NULL;
+        }
+    }
+
+    size_t used_freed = 0, free_freed = 0, count_freed = 0;
+    heap_stats(&used_freed, &free_freed, &count_freed);
+    uint32_t expected_total_free = (uint32_t)(break_after - HEAP_START_ADDR - sizeof(heap_block_t));
+
+    kprintf("  [FREE]   Post-free stats: Blocks: %u | Used: %u B | Free: %u B (Expected: %u B)\n",
+            (uint32_t)count_freed, (uint32_t)used_freed, (uint32_t)free_freed, expected_total_free);
+
+    bool coalesce_ok = (count_freed == 1) && (used_freed == 0) && (free_freed == expected_total_free);
+    if (coalesce_ok) {
+        kprintf("  [PASS] All blocks coalesced into 1 free block covering the entire heap.\n");
+    } else {
+        kprintf("  [FAIL] Coalescing check failed! (Blocks: %u, Expected: 1)\n", (uint32_t)count_freed);
+    }
+
+    /* Sub-check F: Request allocation exceeding max capacity (100 MB) */
+    kprintf("  [OVERFLOW] Requesting 100 MB (exceeds max heap capacity)...\n");
+    void* oversize_ptr = kmalloc(HEAP_OVERSIZED_TEST_SIZE);
+    bool overflow_ok = (oversize_ptr == NULL);
+    if (overflow_ok) {
+        kprintf("  [PASS] kmalloc(100 MB) correctly returned NULL without kernel panic.\n");
+    } else {
+        kprintf("  [FAIL] kmalloc(100 MB) unexpectedly succeeded (ptr: %p)!\n", oversize_ptr);
+        kfree(oversize_ptr);
+    }
+
+    /* Sub-check G: Final summary verdict */
+    bool overall_pass = alloc_ok && pattern_ok && growth_ok && pages_mapped_ok && coalesce_ok && overflow_ok;
+    if (overall_pass) {
+        vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+        kprintf(">>> [PASS] F8: Heap Growth Test completed successfully! <<<\n\n");
+    } else {
+        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        kprintf(">>> [FAIL] F8: Heap Growth Test encountered failures! <<<\n\n");
+    }
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+}
+
 /*
  * kernel_main:
  * Milestone 3 Kernel Entry Point.
@@ -296,7 +471,7 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     kprintf("  - [F1]: Divide by Zero (#DE)       [F2]: Software Interrupt (int 0x80)\n");
     kprintf("  - [F3]: Memory Statistics          [F4]: Heap Stress & Coalesce Test\n");
     kprintf("  - [F5]: PMM Alloc/Free Test        [F6]: Page Fault: NULL Read (0x0)\n");
-    kprintf("  - [F7]: Page Fault: Unmapped Write (0xDEADB000)\n\n");
+    kprintf("  - [F7]: Page Fault: Unmapped Write [F8]: Heap Growth Test (Past 64 KB)\n\n");
 
     uint32_t last_serial_uptime = 0;
 
@@ -343,6 +518,8 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
                 trigger_null_page_fault();
             } else if (uc == KEY_F7) {
                 trigger_unmapped_page_fault();
+            } else if (uc == KEY_F8) {
+                test_heap_growth();
             } else if (c == '\n') {
                 kprintf("\n");
             } else if (c == '\b') {

@@ -137,6 +137,12 @@ static void keyboard_handler(registers_t* regs) {
         return;
     }
 
+    if (scancode == 0x42) {
+        /* F8 key pressed (Scancode 0x42) */
+        buffer_put((char)KEY_F8);
+        return;
+    }
+
     /* 4. Character translation */
     if (scancode < 128) {
         char unshifted = scancode_unshifted[scancode];

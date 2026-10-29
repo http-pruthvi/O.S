@@ -110,3 +110,13 @@ make deploy
 2. In Windows PowerShell, create and launch the VM using `VBoxManage`:
    See [`docs/milestone-1.md`](file:///c:/Users/pruthvi/Desktop/Hobbies/O.S/docs/milestone-1.md) for the exact command script.
 3. Observe the system banner and memory info on the VM screen, and inspect `C:\os\serial.log` for matching output.
+
+### Interactive Test Hooks
+- **`[F1]`**: Divide-by-Zero exception (`#DE`)
+- **`[F2]`**: Software interrupt (`int 0x80`)
+- **`[F3]`**: Live PMM physical frames and heap allocation statistics
+- **`[F4]`**: 20-block heap stress and coalescing verification test
+- **`[F5]`**: 10-frame PMM physical allocation and free test
+- **`[F6]`**: Page Fault exception via NULL pointer read (`0x00000000`)
+- **`[F7]`**: Page Fault exception via unmapped write (`0xDEADB000`)
+- **`[F8]`**: Heap Growth Test (allocates 200 KB across 10 blocks of 20 KB to force expansion past 64 KB, validates pattern integrity, verifies PMM frame consumption, checks page table mappings, tests reverse-order `kfree` coalescing, and verifies 100 MB oversize rejection)

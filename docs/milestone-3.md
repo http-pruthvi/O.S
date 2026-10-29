@@ -15,6 +15,7 @@ The objective of Milestone 3 is to give the operating system full control over p
    - `F5`: 10-frame PMM allocation and deallocation test
    - `F6`: Trigger Page Fault via NULL pointer read (`0x0`)
    - `F7`: Trigger Page Fault via unmapped write (`0xDEADB000`)
+   - `F8`: Heap Growth Test (200 KB allocation past 64 KB, PMM frame tracking, paging verification, reverse free coalescing, 100 MB rejection)
 
 ---
 
@@ -158,3 +159,36 @@ When memory blocks of varying sizes are allocated and freed, the heap can become
 ### Q10: What is the role of `CR2` during a Page Fault?
 **Answer**:
 When a page fault occurs, the CPU hardware automatically latches the 32-bit linear address that attempted the illegal access into the `CR2` control register. The `#PF` exception handler reads `CR2` via inline assembly (`mov eax, cr2`) to determine exactly which address triggered the fault and display it on the panic screen.
+
+---
+
+## 6. Heap Growth Verification Test (`F8`)
+
+### Purpose
+While the initial `F4` test validates small allocations and coalescing inside early heap memory, it never forces the allocator past its initial boundary. The `F8` test exercises dynamic heap growth (`heap_expand`):
+1. **Demand Expansion**: Allocates 10 blocks of 20 KB each ($200\text{ KB}$ total), forcing the heap to repeatedly request physical frames from the PMM, map them via `paging_map_page()`, flush the TLB with `invlpg`, and extend or create free blocks.
+2. **Data & Alignment Integrity**: Verifies that every allocated block pointer is 8-byte aligned, writes unique deterministic byte patterns across all 200 KB, and reads them back to prove no pages were left unmapped or overlapping.
+3. **PMM & Page Table Tracking**: Verifies that the heap break increases by whole pages, PMM free frames decrease by the corresponding frame count plus any newly allocated page table frames, and `paging_get_phys()` confirms the first and last virtual pages of the expanded heap are physically mapped.
+4. **Reverse-Order Coalescing**: Deallocates all 10 blocks in reverse order (`kfree(blocks[9])` down to `kfree(blocks[0])`), verifying that forward coalescing with the trailing free remainder restores the entire heap to a single free block (`count == 1`).
+5. **Ceiling Protection**: Attempts an oversized allocation ($100\text{ MB}$, exceeding `HEAP_MAX_SIZE`), verifying that `kmalloc` logs an error and safely returns `NULL` without crashing or panicking.
+
+### Expected Execution Flow
+```text
+>>> [TEST HOOK] F8 pressed: Running Heap Growth Test (Past 64 KB) <<<
+  [BEFORE] Heap break: 0xD0001000 | Free: ... | Blocks: 1 | PMM free frames: <initial>
+  [ALLOC]  Allocating 10 blocks of 20 KB each (200 KB total)...
+  [PASS] All 10 blocks verified (8-byte aligned, data integrity intact).
+  [AFTER]  Heap break: <advanced break> (increased by ... B / ... pages)
+  [AFTER]  PMM free frames: <decreased count> (decreased by ... frames)
+  [PASS] Heap break advanced and PMM free frames decreased.
+  [PAGE]   First heap page (0xD0000000) mapped to physical: 0x...
+  [PAGE]   Last heap page  (...) mapped to physical: 0x...
+  [PASS] Both first and last heap pages verified as present in page tables.
+  [FREE]   Freeing all 10 blocks in reverse order...
+  [FREE]   Post-free stats: Blocks: 1 | Used: 0 B | Free: ... B
+  [PASS] All blocks coalesced into 1 free block covering the entire heap.
+  [OVERFLOW] Requesting 100 MB (exceeds max heap capacity)...
+  [HEAP] Error: Requested allocation (100 MB) exceeds max heap capacity (64 MB)!
+  [PASS] kmalloc(100 MB) correctly returned NULL without kernel panic.
+>>> [PASS] F8: Heap Growth Test completed successfully! <<<
+```

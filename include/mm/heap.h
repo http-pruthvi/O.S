@@ -54,6 +54,9 @@ void kfree(void* ptr);
 /* Retrieves current heap metrics (used payload bytes, free bytes, block count) */
 void heap_stats(size_t* used_bytes, size_t* free_bytes, size_t* block_count);
 
+/* Returns the current virtual address break (top of mapped virtual heap) */
+uintptr_t heap_get_break(void);
+
 /* Prints debug dump of all blocks and their status */
 void heap_dump(void);
 
