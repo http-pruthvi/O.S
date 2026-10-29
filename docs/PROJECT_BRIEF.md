@@ -20,22 +20,23 @@
 - Boot: GRUB with Multiboot 1 (magic 0x1BADB002). GRUB passes EAX = 0x2BADB002 and EBX = pointer to multiboot info structure. Kernel is loaded at 1 MB (0x00100000).
 - Language: freestanding C (gnu99 or gnu11) + NASM assembly. No libc, no external libraries.
 - Compiler flags: -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pic -m32 (as applicable to i686-elf-gcc); linker flags: -nostdlib, link libgcc.
-- Display: VGA text mode 80x25 at 0xB8000.
-- Debug output: all kernel logging goes to BOTH VGA and COM1 serial.
-- Single CPU, no SMP, no ACPI, no USB, no networking, no GUI. These are out of scope.
+- Display: Linear Framebuffer (1024x768x32 RGB) via VBE/Multiboot 1, with VGA text mode fallback at 0xB8000.
+- Input: PS/2 Keyboard (IRQ 1) and PS/2 Mouse (IRQ 12).
+- Debug output: all kernel logging goes to BOTH active display (VGA text or FB console) and COM1 serial.
+- Scope: Mouse-driven graphical desktop OS with window manager and productivity mini-apps. Single CPU, no SMP, no ACPI, no USB, no networking, no CLI shell.
 
 ## 4. Architecture Overview (Layers)
-- Layer 0 - Boot: boot.asm (Multiboot header, stack, call kernel_main)
+- Layer 0 - Boot: boot.asm (Multiboot header with video mode request, stack, call kernel_main)
 - Layer 1 - Arch/CPU: GDT, IDT, ISR/IRQ stubs, PIC remap, PIT timer
-- Layer 2 - Drivers: VGA text, serial (COM1), keyboard (PS/2), timer
-- Layer 3 - Memory: physical memory manager (bitmap), paging, kernel heap (kmalloc/kfree)
-- Layer 4 - Process: PCB/task structures, context switch (asm), round-robin scheduler
-- Layer 5 - Syscall/User mode: int 0x80 interface, ring 3, TSS
-- Layer 6 - Filesystem: initrd/ramdisk, simple VFS (open/read/close/readdir)
-- Layer 7 - Shell: command parser, built-in commands, program execution
+- Layer 2 - Drivers: serial (COM1), keyboard (PS/2), mouse (PS/2, IRQ 12), timer
+- Layer 3 - Memory: physical memory manager (bitmap), paging (including framebuffer mapping), kernel heap (kmalloc/kfree)
+- Layer 4 - GUI Foundation: linear framebuffer, 8x16 bitmap font, framebuffer text console, drawing primitives, back buffer, software cursor (Milestone 4)
+- Layer 5 - Window Manager & Widgets: windows, title bars, dragging, z-order, buttons, labels, text boxes, taskbar, event dispatch (Milestone 5)
+- Layer 6 - Desktop Apps: calculator, text editor (Notepad-like), mini spreadsheet (Excel-like), clock (Milestone 6)
+- Layer 7 - Processes & Scheduler: kernel tasks, context switch (asm), round-robin scheduler (parked plan) (Milestone 7)
 - Support: lib/ with kernel helpers (string functions, minimal kprintf, panic).
 
-Boot flow: Power on -> BIOS -> GRUB -> loads kernel ELF at 1 MB -> jumps to _start in boot.asm with EAX/EBX set -> boot.asm sets up stack, passes multiboot info to kernel_main -> kernel_main initializes drivers and prints.
+Boot flow: Power on -> BIOS -> GRUB -> switches to VBE linear framebuffer 1024x768x32 -> loads kernel ELF at 1 MB -> jumps to _start in boot.asm with EAX/EBX set -> boot.asm sets up stack, passes multiboot info to kernel_main -> kernel_main initializes drivers, maps memory and framebuffer, and enters GUI mode.
 
 ## 5. Target Folder Structure (create only what the current milestone needs; add the rest as we go)
 ```text
@@ -43,16 +44,16 @@ myos/
   src/
     boot/        boot.asm
     arch/        gdt, idt, isr, irq, pic, pit        (Milestone 2)
-    drivers/     vga, serial, keyboard                (vga+serial in M1)
+    drivers/     vga, serial, keyboard, mouse        (mouse in M4)
     mm/          pmm, paging, heap                    (Milestone 3)
-    proc/        task, scheduler, switch.asm          (Milestone 4)
-    syscall/     syscall table and handlers           (Milestone 5)
-    fs/          initrd, vfs                          (Milestone 6)
-    shell/       shell, commands                      (Milestone 7)
+    gfx/         fb_console, font8x16, gfx, cursor   (Milestone 4)
+    gui/         window, widget, event                (Milestone 5)
+    apps/        editor, calc, sheet, clock           (Milestone 6)
+    proc/        task, scheduler, switch.asm          (Milestone 7)
     lib/         string, kprintf, panic
     kernel/      kernel.c (kernel_main and init order)
   include/       header files mirroring src/ layout
-  docs/          PROJECT_BRIEF.md, architecture notes, milestone notes, diagrams (Mermaid or ASCII)
+  docs/          PROJECT_BRIEF.md, architecture notes, milestone notes, diagrams
   iso/boot/grub/ grub.cfg
   linker.ld
   Makefile
@@ -87,11 +88,12 @@ After every milestone, update README.md and add docs/milestone-N.md containing:
 Keep a running docs/architecture.md that is updated as layers get added.
 
 ## 9. Roadmap (16 weeks)
-- M1 (Wk 1-2): Boot & Hello World: boot stub, linker script, VGA + serial output, build/ISO/deploy pipeline
-- M2 (Wk 3-4): Interrupts & Drivers: GDT, IDT, ISRs, PIC remap, PIT timer, PS/2 keyboard
-- M3 (Wk 5-6): Memory: physical memory manager (using multiboot memory map), paging, kernel heap
-- M4 (Wk 7-9): Processes: task structure, context switching, round-robin scheduler
-- M5 (Wk 10-11): Syscalls & user mode: int 0x80, TSS, ring 3
-- M6 (Wk 12-13): Filesystem: initrd/ramdisk, simple VFS
-- M7 (Wk 14-15): Shell: ls, cat, clear, help, run program
-- M8 (Wk 16): Docs, report, demo video, viva prep
+- M1 (DONE): Boot & Hello World: boot stub, linker script, VGA + serial output, build/ISO/deploy pipeline
+- M2 (DONE): Interrupts & Drivers: GDT, IDT, ISRs, PIC remap, PIT timer, PS/2 keyboard
+- M3 (DONE): Memory: physical memory manager (using multiboot memory map), paging, kernel heap (with F8 growth test)
+- M4 (ACTIVE): GUI Foundation: graphics mode (linear framebuffer 1024x768x32), framebuffer text console, drawing primitives, 8x16 font, PS/2 mouse driver (IRQ12), software mouse cursor, mouse paint demo
+- M5: Window Manager and Widgets: windows, title bars, dragging, z-order, buttons, labels, text boxes, taskbar, event dispatch
+- M6: Apps: calculator, text editor (Notepad-like), mini spreadsheet (Excel-like), clock (apps run as windows inside the kernel)
+- M7: Processes & Scheduler: kernel tasks, context switch, round-robin scheduler (parked plan)
+- M8: Docs, report, demo video, viva prep
+(Optional if time remains: syscalls and user mode, ramdisk filesystem so editor can save files, 64-bit port).
