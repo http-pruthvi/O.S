@@ -2,11 +2,13 @@
 #include "arch/irq.h"
 #include "arch/pic.h"
 #include "drivers/vga.h"
+#include "gfx/fb.h"
 #include "lib/io.h"
 
 /* Global tick counter incremented on every IRQ 0 tick */
 static volatile uint32_t timer_ticks = 0;
 static uint32_t timer_frequency = 100;
+static volatile bool timer_clock_dirty = false;
 
 /*
  * format_uptime_clock:
@@ -43,13 +45,42 @@ static void timer_handler(registers_t* regs) {
 
     /* Update top-right screen clock once per second (every 100 ticks) */
     if ((timer_ticks % timer_frequency) == 0) {
-        char clock_buf[16];
-        uint32_t seconds = timer_ticks / timer_frequency;
-        format_uptime_clock(seconds, clock_buf);
-
-        /* Write clock in top-right corner (column 65, row 0) in White on Blue (0x1F) */
-        vga_put_at(65, 0, clock_buf, 0x1F);
+        if (fb_is_active()) {
+            /* In graphics mode, the ISR must NOT draw; set flag for main loop to redraw */
+            timer_clock_dirty = true;
+        } else {
+            /* Fallback VGA text mode: write directly to 0xB8000 */
+            char clock_buf[16];
+            uint32_t seconds = timer_ticks / timer_frequency;
+            format_uptime_clock(seconds, clock_buf);
+            vga_put_at(65, 0, clock_buf, 0x1F);
+        }
     }
+}
+
+/*
+ * timer_format_clock:
+ * Formats current uptime into a caller-supplied 16-byte buffer "[Uptime: MM:SS]".
+ */
+void timer_format_clock(char* buf) {
+    if (!buf) return;
+    format_uptime_clock(timer_get_uptime_sec(), buf);
+}
+
+/*
+ * timer_is_clock_dirty:
+ * Returns true if a second has elapsed and the uptime display needs updating.
+ */
+bool timer_is_clock_dirty(void) {
+    return timer_clock_dirty;
+}
+
+/*
+ * timer_clear_clock_dirty:
+ * Resets the clock display update flag.
+ */
+void timer_clear_clock_dirty(void) {
+    timer_clock_dirty = false;
 }
 
 /*

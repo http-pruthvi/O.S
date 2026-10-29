@@ -32,6 +32,15 @@ uint32_t timer_get_ticks(void);
 /* Returns the system uptime in full elapsed seconds */
 uint32_t timer_get_uptime_sec(void);
 
+/* Formats the current uptime into a fixed-width clock string "[Uptime: MM:SS]" */
+void timer_format_clock(char* buf);
+
+/* Checks if the uptime clock needs a display refresh (used by main loop in graphics mode) */
+bool timer_is_clock_dirty(void);
+
+/* Clears the clock dirty refresh flag */
+void timer_clear_clock_dirty(void);
+
 /* Delays execution for the specified number of milliseconds using CPU halt */
 void timer_sleep_ms(uint32_t ms);
 

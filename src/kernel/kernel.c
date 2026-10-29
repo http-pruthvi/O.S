@@ -9,6 +9,7 @@
 #include "mm/paging.h"
 #include "mm/heap.h"
 #include "gfx/fb.h"
+#include "gfx/fb_console.h"
 #include "drivers/vga.h"
 #include "drivers/serial.h"
 #include "drivers/timer.h"
@@ -460,9 +461,11 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     paging_init();
     kprintf("[OK] Two-level paging enabled (CR3 loaded, CR0.PG set)\n");
 
-    /* Step 13b: Map Linear Framebuffer into page tables */
+    /* Step 13b: Map Linear Framebuffer into page tables and initialize console */
     if (fb_map_pages()) {
+        fb_console_init();
         kprintf("[OK] Linear Framebuffer mapped into page tables\n");
+        kprintf("[OK] Framebuffer console initialized (1024x768x32, 128x48 text mode)\n");
     }
 
     /* Step 14: Dynamic Kernel Heap */
@@ -482,10 +485,27 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     kprintf("  - [F5]: PMM Alloc/Free Test        [F6]: Page Fault: NULL Read (0x0)\n");
     kprintf("  - [F7]: Page Fault: Unmapped Write [F8]: Heap Growth Test (Past 64 KB)\n\n");
 
+    /* Initial draw of uptime clock in top-right corner if in graphics mode */
+    if (fb_is_active()) {
+        char clock_buf[16];
+        timer_format_clock(clock_buf);
+        vga_put_at(112, 0, clock_buf, 0x1F);
+    }
+
     uint32_t last_serial_uptime = 0;
 
     /* Interactive Console Loop */
     while (1) {
+        /* Refresh graphics mode uptime clock on screen if flagged by timer ISR */
+        if (timer_is_clock_dirty()) {
+            char clock_buf[16];
+            timer_format_clock(clock_buf);
+            if (fb_is_active()) {
+                vga_put_at(112, 0, clock_buf, 0x1F);
+            }
+            timer_clear_clock_dirty();
+        }
+
         /* Log uptime to serial every 5 seconds */
         uint32_t current_uptime = timer_get_uptime_sec();
         if (current_uptime >= last_serial_uptime + 5) {

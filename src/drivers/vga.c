@@ -1,4 +1,6 @@
 #include "drivers/vga.h"
+#include "gfx/fb.h"
+#include "gfx/fb_console.h"
 #include "lib/io.h"
 #include "lib/string.h"
 
@@ -90,6 +92,9 @@ void vga_update_cursor(void) {
  */
 void vga_set_color(vga_color_t fg, vga_color_t bg) {
     vga_color = vga_entry_color(fg, bg);
+    if (fb_is_active()) {
+        fb_console_set_color(fg, bg);
+    }
 }
 
 /*
@@ -121,9 +126,15 @@ static void vga_scroll(void) {
 
 /*
  * vga_clear:
- * Clears the entire 80x25 text screen by writing blank spaces with the active color.
+ * Clears the entire text screen by writing blank spaces with the active color.
+ * Routes to fb_console_clear() when in graphics mode.
  */
 void vga_clear(void) {
+    if (fb_is_active()) {
+        fb_console_clear();
+        return;
+    }
+
     uint16_t blank = vga_entry(' ', vga_color);
     for (size_t y = 0; y < VGA_HEIGHT; y++) {
         for (size_t x = 0; x < VGA_WIDTH; x++) {
@@ -148,13 +159,19 @@ void vga_init(void) {
 
 /*
  * vga_putchar:
- * Writes a single ASCII character to the VGA text buffer, handling special
- * control characters and auto-wrapping / scrolling.
+ * Writes a single ASCII character to the active display output.
+ * If linear graphics mode is active, routes directly to the framebuffer terminal console.
+ * Otherwise, outputs to the legacy 80x25 VGA text buffer at 0xB8000.
  *
  * Parameters:
  *   c - Character to output
  */
 void vga_putchar(char c) {
+    if (fb_is_active()) {
+        fb_console_putchar(c);
+        return;
+    }
+
     if (c == '\n') {
         /* Line feed: move to beginning of next row */
         vga_column = 0;
@@ -235,7 +252,16 @@ void vga_writestring(const char* str) {
  *   color - VGA attribute byte (foreground and background color)
  */
 void vga_put_at(size_t x, size_t y, const char* str, uint8_t color) {
-    if (!str || y >= VGA_HEIGHT) {
+    if (!str) {
+        return;
+    }
+
+    if (fb_is_active()) {
+        fb_console_put_at(x, y, str, color);
+        return;
+    }
+
+    if (y >= VGA_HEIGHT) {
         return;
     }
 

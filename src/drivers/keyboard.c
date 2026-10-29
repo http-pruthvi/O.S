@@ -57,6 +57,15 @@ static void buffer_put(char c) {
 static void keyboard_handler(registers_t* regs) {
     (void)regs; /* Unused */
 
+    /* Check status register (port 0x64):
+     * Bit 0 must be 1 (output buffer has data).
+     * Bit 5 must be 0 (data is from keyboard, not aux/mouse device).
+     */
+    uint8_t status = inb(KEYBOARD_STATUS_PORT);
+    if ((status & 0x01) == 0 || (status & 0x20) != 0) {
+        return;
+    }
+
     uint8_t scancode = inb(KEYBOARD_DATA_PORT);
 
     /* 1. Handle extended key prefix (0xE0) */
