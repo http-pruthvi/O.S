@@ -23,9 +23,10 @@
 /* Flags used in the Multiboot header */
 #define MULTIBOOT_FLAG_PAGE_ALIGN       (1 << 0)  /* Align modules on 4KB page boundaries */
 #define MULTIBOOT_FLAG_MEMORY_INFO      (1 << 1)  /* Provide memory information (mem_lower, mem_upper) */
+#define MULTIBOOT_FLAG_VIDEO_MODE       (1 << 2)  /* Request video mode from bootloader */
 
 /* Combined header flags requested from GRUB */
-#define MULTIBOOT_HEADER_FLAGS          (MULTIBOOT_FLAG_PAGE_ALIGN | MULTIBOOT_FLAG_MEMORY_INFO)
+#define MULTIBOOT_HEADER_FLAGS          (MULTIBOOT_FLAG_PAGE_ALIGN | MULTIBOOT_FLAG_MEMORY_INFO | MULTIBOOT_FLAG_VIDEO_MODE)
 
 /* Flags present in the multiboot_info_t struct indicating valid fields */
 #define MULTIBOOT_INFO_FLAG_MEM         (1 << 0)  /* mem_lower and mem_upper are valid */
@@ -35,6 +36,13 @@
 #define MULTIBOOT_INFO_FLAG_AOUT_SYMS   (1 << 4)  /* a.out symbol table is valid */
 #define MULTIBOOT_INFO_FLAG_ELF_SHDR    (1 << 5)  /* ELF section header table is valid */
 #define MULTIBOOT_INFO_FLAG_MMAP        (1 << 6)  /* Memory map buffer is valid */
+#define MULTIBOOT_INFO_FLAG_VBE         (1 << 11) /* VBE info is valid */
+#define MULTIBOOT_INFO_FLAG_FRAMEBUFFER (1 << 12) /* Linear framebuffer info is valid */
+
+/* Framebuffer type definitions per Multiboot specification */
+#define MULTIBOOT_FRAMEBUFFER_TYPE_INDEXED 0
+#define MULTIBOOT_FRAMEBUFFER_TYPE_RGB     1
+#define MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT 2
 
 /*
  * Memory Map Entry:
@@ -100,6 +108,20 @@ typedef struct multiboot_info {
     uint16_t vbe_interface_seg;
     uint16_t vbe_interface_off;
     uint16_t vbe_interface_len;
+
+    /* Multiboot 0.6.96+ Linear Framebuffer fields (valid if flags & MULTIBOOT_INFO_FLAG_FRAMEBUFFER) */
+    uint64_t framebuffer_addr;
+    uint32_t framebuffer_pitch;
+    uint32_t framebuffer_width;
+    uint32_t framebuffer_height;
+    uint8_t  framebuffer_bpp;
+    uint8_t  framebuffer_type;
+    uint8_t  framebuffer_red_field_position;
+    uint8_t  framebuffer_red_mask_size;
+    uint8_t  framebuffer_green_field_position;
+    uint8_t  framebuffer_green_mask_size;
+    uint8_t  framebuffer_blue_field_position;
+    uint8_t  framebuffer_blue_mask_size;
 } __attribute__((packed)) multiboot_info_t;
 
 #endif /* KERNEL_MULTIBOOT_H */

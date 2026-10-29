@@ -20,18 +20,32 @@
 MULTIBOOT_MAGIC     equ 0x1BADB002            ; Magic number identifying Multiboot header
 MULTIBOOT_PAGE_ALIGN equ 1 << 0               ; Align loaded modules on 4 KB boundaries
 MULTIBOOT_MEM_INFO   equ 1 << 1               ; Provide memory map information
-MULTIBOOT_FLAGS     equ MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEM_INFO
+MULTIBOOT_VIDEO_MODE equ 1 << 2               ; Request linear graphics video mode
+MULTIBOOT_FLAGS     equ MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEM_INFO | MULTIBOOT_VIDEO_MODE
 MULTIBOOT_CHECKSUM  equ -(MULTIBOOT_MAGIC + MULTIBOOT_FLAGS) ; Checksum: magic + flags + checksum == 0
 
 ; ------------------------------------------------------------------------------
 ; Multiboot Header Section
 ; Must be 4-byte aligned and located within the first 8192 bytes of the ELF file.
+; Per Multiboot 1 spec: when bit 2 is set in flags, the 5 a.out address fields
+; at offsets 12-28 must be present (set to 0 for ELF) before the video mode fields.
 ; ------------------------------------------------------------------------------
 section .multiboot
 align 4
-    dd MULTIBOOT_MAGIC                        ; Magic number
-    dd MULTIBOOT_FLAGS                        ; Feature flags
-    dd MULTIBOOT_CHECKSUM                     ; Checksum verification
+    dd MULTIBOOT_MAGIC                        ; Offset 0: Magic number
+    dd MULTIBOOT_FLAGS                        ; Offset 4: Feature flags (bits 0, 1, 2)
+    dd MULTIBOOT_CHECKSUM                     ; Offset 8: Checksum verification
+    ; Address fields (offsets 12-28, unused in ELF but required by spec when bit 2 is set):
+    dd 0                                      ; Offset 12: header_addr
+    dd 0                                      ; Offset 16: load_addr
+    dd 0                                      ; Offset 20: load_end_addr
+    dd 0                                      ; Offset 24: bss_end_addr
+    dd 0                                      ; Offset 28: entry_addr
+    ; Graphics mode request fields (offsets 32-44):
+    dd 0                                      ; Offset 32: mode_type (0 = linear graphics, 1 = text)
+    dd 1024                                   ; Offset 36: width (1024 pixels)
+    dd 768                                    ; Offset 40: height (768 pixels)
+    dd 32                                     ; Offset 44: depth (32 bits per pixel / 0x00RRGGBB)
 
 ; ------------------------------------------------------------------------------
 ; BSS Section: Kernel Stack Allocation
