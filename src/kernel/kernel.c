@@ -8,6 +8,7 @@
 #include "mm/pmm.h"
 #include "mm/paging.h"
 #include "mm/heap.h"
+#include "gfx/fb.h"
 #include "drivers/vga.h"
 #include "drivers/serial.h"
 #include "drivers/timer.h"
@@ -447,6 +448,9 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     memmap_init(mboot_info);
     kprintf("[OK] Multiboot memory map parsed & buffered in kernel memory\n");
 
+    /* Step 11b: Buffer Multiboot linear framebuffer info BEFORE paging */
+    fb_early_init(mboot_info);
+
     /* Step 12: Physical Memory Manager (Bitmap Allocator) */
     pmm_init(mboot_info);
     kprintf("[OK] Physical memory manager initialized (%u MB free)\n",
@@ -455,6 +459,11 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     /* Step 13: Two-Level Paging (Identity maps RAM, Page 0 unmapped) */
     paging_init();
     kprintf("[OK] Two-level paging enabled (CR3 loaded, CR0.PG set)\n");
+
+    /* Step 13b: Map Linear Framebuffer into page tables */
+    if (fb_map_pages()) {
+        kprintf("[OK] Linear Framebuffer mapped into page tables\n");
+    }
 
     /* Step 14: Dynamic Kernel Heap */
     heap_init();

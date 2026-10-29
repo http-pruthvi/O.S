@@ -24,6 +24,8 @@
 #define PAGE_PRESENT 0x01  /* Bit 0: Page is present in physical memory */
 #define PAGE_WRITE   0x02  /* Bit 1: Page is read/write (0 = read-only) */
 #define PAGE_USER    0x04  /* Bit 2: Page is accessible in user mode (0 = supervisor) */
+#define PAGE_PWT     0x08  /* Bit 3: Write-through caching */
+#define PAGE_PCD     0x10  /* Bit 4: Page-level Cache Disable (used for video MMIO) */
 
 /* Maximum physical RAM identity-mapped at boot */
 #define PAGING_IDENTITY_MAX_RAM (256 * 1024 * 1024) /* 256 MB */
