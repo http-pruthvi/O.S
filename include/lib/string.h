@@ -18,6 +18,9 @@ void* memset(void* dest, int val, size_t count);
 /* Copies count bytes from src memory region to dest memory region */
 void* memcpy(void* dest, const void* src, size_t count);
 
+/* Copies count bytes between potentially overlapping memory regions */
+void* memmove(void* dest, const void* src, size_t count);
+
 /* Compares two blocks of memory byte by byte */
 int memcmp(const void* s1, const void* s2, size_t count);
 

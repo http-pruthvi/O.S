@@ -45,6 +45,33 @@ void* memcpy(void* dest, const void* src, size_t count) {
 }
 
 /*
+ * memmove:
+ * Copies count bytes between potentially overlapping memory areas.
+ */
+void* memmove(void* dest, const void* src, size_t count) {
+    uint8_t* d = (uint8_t*)dest;
+    const uint8_t* s = (const uint8_t*)src;
+
+    if (d == s || count == 0) {
+        return dest;
+    }
+
+    if (d < s) {
+        /* Copy forward when dest is below src */
+        for (size_t i = 0; i < count; i++) {
+            d[i] = s[i];
+        }
+    } else {
+        /* Copy backward when dest is above src to prevent overwriting */
+        for (size_t i = count; i > 0; i--) {
+            d[i - 1] = s[i - 1];
+        }
+    }
+
+    return dest;
+}
+
+/*
  * memcmp:
  * Compares the first count bytes of memory area s1 and memory area s2.
  * Returns:
