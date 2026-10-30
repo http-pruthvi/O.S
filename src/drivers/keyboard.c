@@ -152,6 +152,12 @@ static void keyboard_handler(registers_t* regs) {
         return;
     }
 
+    if (scancode == 0x43) {
+        /* F9 key pressed (Scancode 0x43) */
+        buffer_put((char)KEY_F9);
+        return;
+    }
+
     /* 4. Character translation */
     if (scancode < 128) {
         char unshifted = scancode_unshifted[scancode];

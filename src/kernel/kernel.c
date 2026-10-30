@@ -14,12 +14,18 @@
 #include "drivers/serial.h"
 #include "drivers/timer.h"
 #include "drivers/keyboard.h"
+#include "drivers/mouse.h"
 #include "lib/kprintf.h"
 #include "lib/types.h"
 
 /* Linker symbols defining kernel physical boundary addresses */
 extern uint8_t _kernel_start[];
 extern uint8_t _kernel_end[];
+
+/* Weak stub for paint demo (provided strongly in Commit 10) */
+__attribute__((weak)) void paint_demo_run(void) {
+    kprintf("[PAINT] Paint demo not yet initialized.\n");
+}
 
 /*
  * halt_system:
@@ -407,15 +413,20 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
         halt_system();
     }
 
+    /* Early detection of Multiboot linear framebuffer */
+    fb_early_init(mboot_info);
+
     /* Welcome Banner */
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
     kprintf("================================================================\n");
-    kprintf("     MyOS - 32-bit x86 Kernel (Milestone 3: Memory Management)  \n");
+    kprintf("     MyOS - 32-bit x86 Kernel (Milestone 4: GUI Foundation)     \n");
     kprintf("================================================================\n");
 
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
     kprintf("[OK] Serial COM1 initialized (115200 8N1)\n");
-    kprintf("[OK] VGA text mode initialized (80x25 at 0xB8000)\n");
+    if (!fb_is_active()) {
+        kprintf("[OK] VGA text mode initialized (80x25 at 0xB8000)\n");
+    }
 
     /* Step 4: GDT */
     gdt_init();
@@ -445,12 +456,12 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     keyboard_init();
     kprintf("[OK] PS/2 keyboard driver initialized (IRQ 1)\n");
 
+    /* Step 10b: PS/2 Mouse */
+    mouse_init();
+
     /* Step 11: Multiboot Memory Map (Parsed and copied into kernel buffers BEFORE paging) */
     memmap_init(mboot_info);
     kprintf("[OK] Multiboot memory map parsed & buffered in kernel memory\n");
-
-    /* Step 11b: Buffer Multiboot linear framebuffer info BEFORE paging */
-    fb_early_init(mboot_info);
 
     /* Step 12: Physical Memory Manager (Bitmap Allocator) */
     pmm_init(mboot_info);
@@ -483,7 +494,8 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     kprintf("  - [F1]: Divide by Zero (#DE)       [F2]: Software Interrupt (int 0x80)\n");
     kprintf("  - [F3]: Memory Statistics          [F4]: Heap Stress & Coalesce Test\n");
     kprintf("  - [F5]: PMM Alloc/Free Test        [F6]: Page Fault: NULL Read (0x0)\n");
-    kprintf("  - [F7]: Page Fault: Unmapped Write [F8]: Heap Growth Test (Past 64 KB)\n\n");
+    kprintf("  - [F7]: Page Fault: Unmapped Write [F8]: Heap Growth Test (Past 64 KB)\n");
+    kprintf("  - [F9]: Mouse Paint Demo\n\n");
 
     /* Initial draw of uptime clock in top-right corner if in graphics mode */
     if (fb_is_active()) {
@@ -528,6 +540,12 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
             serial_writestring(" seconds\n");
         }
 
+        /* Drain mouse events while in console mode and log first 5 packets to serial */
+        if (mouse_has_event()) {
+            mouse_event_t ev;
+            mouse_poll_event(&ev);
+        }
+
         /* Keystroke handling */
         if (keyboard_has_char()) {
             char c = keyboard_getchar();
@@ -549,6 +567,12 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
                 trigger_unmapped_page_fault();
             } else if (uc == KEY_F8) {
                 test_heap_growth();
+            } else if (uc == KEY_F9) {
+                vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+                kprintf("\n>>> [TEST HOOK] F9 pressed: Starting Mouse Paint Demo <<<\n");
+                vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+                extern void paint_demo_run(void);
+                paint_demo_run();
             } else if (c == '\n') {
                 kprintf("\n");
             } else if (c == '\b') {
