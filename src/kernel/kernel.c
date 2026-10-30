@@ -10,6 +10,7 @@
 #include "mm/heap.h"
 #include "gfx/fb.h"
 #include "gfx/fb_console.h"
+#include "gfx/paint_demo.h"
 #include "drivers/vga.h"
 #include "drivers/serial.h"
 #include "drivers/timer.h"
@@ -21,11 +22,6 @@
 /* Linker symbols defining kernel physical boundary addresses */
 extern uint8_t _kernel_start[];
 extern uint8_t _kernel_end[];
-
-/* Weak stub for paint demo (provided strongly in Commit 10) */
-__attribute__((weak)) void paint_demo_run(void) {
-    kprintf("[PAINT] Paint demo not yet initialized.\n");
-}
 
 /*
  * halt_system:

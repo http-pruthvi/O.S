@@ -120,3 +120,4 @@ make deploy
 - **`[F6]`**: Page Fault exception via NULL pointer read (`0x00000000`)
 - **`[F7]`**: Page Fault exception via unmapped write (`0xDEADB000`)
 - **`[F8]`**: Heap Growth Test (allocates 200 KB across 10 blocks of 20 KB to force expansion past 64 KB, validates pattern integrity, verifies PMM frame consumption, checks page table mappings, tests reverse-order `kfree` coalescing, and verifies 100 MB oversize rejection)
+- **`[F9]`**: Mouse Paint Demo (launches interactive 1024x768x32 graphics paint demo with 3 MB off-screen back buffer, Bresenham line painting, palette selection, clear button, software arrow cursor with save-under buffer, and ESC key return)
