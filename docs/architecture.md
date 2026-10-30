@@ -151,4 +151,41 @@ Physical Memory (PMM)                Virtual Memory (Paging)
   * Base virtual address `0xD0000000`, expands page-by-page up to 64 MB.
   * 24-byte headers (`magic`, `size`, `is_free`, `padding`, `next`, `prev`), guaranteed 8-byte payload alignment, bi-directional coalescing on `kfree()`.
 
+---
+
+## 6. GUI Foundation Architecture (Milestone 4)
+
+```text
++-----------------------------------------------------------------------------------+
+|                            Display & Input Subsystem                              |
++-----------------------------------------------------------------------------------+
+|  Hardware Inputs:                                                                 |
+|    - PS/2 Keyboard: IRQ 1 (Port 0x60/0x64), Scancode Set 1, Circular Buffer       |
+|    - PS/2 Mouse:    IRQ 12 (Aux Port 0x64/0x60), 3-Byte Packet Assembly,          |
+|                     Event Coalescing, Cascade IRQ 2 Unmasked                      |
++-----------------------------------------------------------------------------------+
+|  Display Layer (1024x768x32 Linear Framebuffer):                                  |
+|    - Multiboot 1 Mode Request: Flags bit 2, Mode Type 0, 1024x768x32              |
+|    - Physical MMIO Base: 0xE0000000 (VirtualBox VRAM), 768 Pages (3 MB)          |
+|    - Page Mapping: Mapped with PAGE_PCD (Page Cache Disable) to prevent tearing  |
+|    - 8x16 Bitmap Font: 95 public-domain ASCII glyphs (32-126)                     |
+|    - Text Console: 128x48 character grid stored in RAM (console_cells[48][128])  |
+|      Scrolling reads strictly from system RAM with zero VRAM reads                |
++-----------------------------------------------------------------------------------+
+|  2D Graphics Engine & Software Cursor:                                            |
+|    - Off-Screen Back Buffer: 3 MB allocated from Heap at 0xD0000000 via kmalloc    |
+|    - Primitives: Bresenham lines, thick brush lines, filled/outline rectangles    |
+|    - Dirty Rect Flusher: gfx_flush_rect copies only modified bounding boxes        |
+|    - Software Cursor: 12x19 arrow sprite rendered directly to VRAM                |
+|      Save-under RAM buffer restores background without touching back buffer       |
+|      Flushes overlapping cursor automatically hide and restore it                 |
++-----------------------------------------------------------------------------------+
+```
+
+### Component Interaction:
+1. **ISR Safety**: Neither the timer (IRQ 0) nor mouse (IRQ 12) interrupt handlers perform drawing operations or call `kprintf()`. The timer sets `timer_clock_dirty = true` for the main loop, while the mouse handler enqueues movement deltas into a volatile ring buffer.
+2. **Back Buffer Isolation**: The back buffer in system RAM contains only application and canvas pixels, never the cursor.
+3. **Save-Under Cursor**: When the cursor moves, the old 12x19 area is restored to VRAM from `save_under`, and the new 12x19 area is saved from the clean back buffer and drawn directly in VRAM. Mouse moves never trigger full-screen flushes.
+
+
 

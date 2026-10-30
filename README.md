@@ -8,7 +8,8 @@ A 32-bit x86 protected mode operating system kernel written from scratch in free
 - **Target Architecture**: x86 32-bit (i686) protected mode, flat memory model, identity-mapped at 1 MB.
 - **Bootloader**: GRUB with Multiboot 1 standard (`0x1BADB002`).
 - **Core Languages**: Freestanding C (GNU11) and NASM Assembly (ELF32). Zero libc dependencies.
-- **Display**: VGA text mode 3 (80x25 characters) at physical address `0xB8000`.
+- **Display**: Linear Framebuffer (1024x768x32 direct RGB) via VBE/Multiboot 1 with VGA text mode fallback at `0xB8000`.
+- **Input Devices**: PS/2 Keyboard (IRQ 1) and PS/2 Mouse (IRQ 12).
 - **Debugging & Logging**: Dual-output via `kprintf` to both VGA screen and COM1 UART serial port (`0x3F8`).
 - **Target Test Environment**: Oracle VirtualBox (VM name: `OSProject`, 128 MB RAM, 1 CPU, BIOS firmware).
 
@@ -27,7 +28,8 @@ myos/
 │   ├── architecture.md     # Boot flow sequence and memory maps
 │   ├── milestone-1.md      # Milestone 1 report and viva Q&A
 │   ├── milestone-2.md      # Milestone 2 report and viva Q&A
-│   └── milestone-3.md      # Milestone 3 report and viva Q&A
+│   ├── milestone-3.md      # Milestone 3 report and viva Q&A
+│   └── milestone-4.md      # Milestone 4 report and viva Q&A
 ├── include/                # Header files
 │   ├── arch/               # Architecture & hardware abstraction
 │   │   ├── gdt.h           # Global Descriptor Table
@@ -37,9 +39,17 @@ myos/
 │   │   └── irq.h           # Hardware IRQ dispatch table
 │   ├── drivers/
 │   │   ├── serial.h        # COM1 UART 16550 serial driver
-│   │   ├── vga.h           # VGA 80x25 text mode driver (with vga_put_at)
+│   │   ├── vga.h           # VGA output driver (console routing)
 │   │   ├── timer.h         # PIT 8254 timer driver (100 Hz, uptime)
-│   │   └── keyboard.h      # PS/2 keyboard driver (Scancode Set 1)
+│   │   ├── keyboard.h      # PS/2 keyboard driver (Scancode Set 1)
+│   │   └── mouse.h         # PS/2 mouse driver (IRQ 12, packet parser)
+│   ├── gfx/                # Graphical Subsystem
+│   │   ├── fb.h            # Linear Framebuffer parser & paging mapper
+│   │   ├── font.h          # 8x16 bitmap font definition
+│   │   ├── fb_console.h    # 128x48 terminal emulator over framebuffer
+│   │   ├── gfx.h           # 2D primitives & 3 MB off-screen back buffer
+│   │   ├── cursor.h        # Software arrow cursor & save-under engine
+│   │   └── paint_demo.h    # Interactive mouse paint demo application
 │   ├── mm/                 # Memory Management
 │   │   ├── memmap.h        # Multiboot memory map parser
 │   │   ├── pmm.h           # Bitmap Physical Memory Manager
@@ -74,7 +84,15 @@ myos/
     │   ├── serial.c        # COM1 driver (115200 8N1, FIFO enabled)
     │   ├── vga.c           # VGA driver (cursor, scrolling, vga_put_at)
     │   ├── timer.c         # PIT timer (100 Hz, uptime screen clock)
-    │   └── keyboard.c      # PS/2 keyboard (scancode set 1, ring buffer)
+    │   ├── keyboard.c      # PS/2 keyboard (scancode set 1, ring buffer)
+    │   └── mouse.c         # PS/2 mouse driver (IRQ 12, packet parser)
+    ├── gfx/
+    │   ├── fb.c            # Framebuffer detection & paging mapper
+    │   ├── font8x16.c      # 8x16 bitmap font table (ASCII 32-126)
+    │   ├── fb_console.c    # 128x48 terminal emulator over framebuffer
+    │   ├── gfx.c           # 2D primitives & 3 MB off-screen back buffer
+    │   ├── cursor.c        # Software arrow cursor & save-under engine
+    │   └── paint_demo.c    # Interactive mouse paint demo application
     ├── kernel/
     │   └── kernel.c        # kernel_main init order, echo loop & test hooks
     └── lib/
