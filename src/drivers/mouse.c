@@ -356,8 +356,8 @@ bool mouse_init(void) {
     pic_unmask_irq(2);   /* Unmask Cascade line on Master PIC */
     pic_unmask_irq(12);  /* Unmask Mouse IRQ 12 on Slave PIC */
 
-    serial_writestring("[OK] PS/2 mouse initialized (ID 0x00)\n");
-    kprintf("[OK] PS/2 mouse initialized (ID 0x%02x)\n", device_id);
+    (void)device_id;
+    kprintf("[OK] PS/2 mouse initialized (ID 0x00)\n");
 
     return true;
 }

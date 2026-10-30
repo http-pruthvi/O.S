@@ -23,24 +23,25 @@ $DestIso = "C:\os\myos.iso"
 
 # 2. Check VM status and power off if currently running
 try {
-    $info = & $VBoxManage showvminfo $VmName --machinereadable 2>&1
+    $info = (& $VBoxManage showvminfo $VmName --machinereadable 2>&1) -join "`n"
     if ($info -match 'VMState="([^"]+)"') {
         $state = $matches[1]
         if ($state -ne "poweroff" -and $state -ne "saved") {
             Write-Host "[RUN] VM '$VmName' is in state '$state'. Powering off..."
-            & $VBoxManage controlvm $VmName poweroff 2>$null | Out-Null
+            & $VBoxManage controlvm $VmName poweroff *>$null
             
             # Wait for VM to reach poweroff state (timeout: 10s)
             $timeoutSeconds = 10
             $sw = [System.Diagnostics.Stopwatch]::StartNew()
             while ($sw.Elapsed.TotalSeconds -lt $timeoutSeconds) {
                 Start-Sleep -Milliseconds 500
-                $check = & $VBoxManage showvminfo $VmName --machinereadable 2>$null
+                $check = (& $VBoxManage showvminfo $VmName --machinereadable 2>$null) -join "`n"
                 if ($check -match 'VMState="poweroff"') {
                     Write-Host "[RUN] VM '$VmName' successfully powered off."
                     break
                 }
             }
+            Start-Sleep -Seconds 1
         }
     }
 } catch {
@@ -77,3 +78,4 @@ if ($SourceIso -and (Test-Path $SourceIso)) {
 Write-Host "[RUN] Starting VirtualBox VM '$VmName'..."
 & $VBoxManage startvm $VmName
 Write-Host "[RUN] VM started successfully."
+
