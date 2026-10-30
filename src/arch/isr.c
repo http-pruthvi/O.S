@@ -143,6 +143,10 @@ void isr_handler(registers_t* regs) {
         return;
     }
 
+    /* Hide software cursor before panic output */
+    extern void cursor_hide(void);
+    cursor_hide();
+
     /* All other vectors 0-31 are fatal CPU exceptions: display Kernel Panic Screen */
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_RED);
     kprintf("\n============================ KERNEL PANIC ============================\n");

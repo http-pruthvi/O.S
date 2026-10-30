@@ -30,6 +30,10 @@ static uint32_t kernel_identity_tables[64][PAGE_ENTRIES_PER_TABLE] __attribute__
  * prints a comprehensive panic screen, and safely halts.
  */
 void page_fault_handler(registers_t* regs) {
+    /* Hide software cursor before panic output */
+    extern void cursor_hide(void);
+    cursor_hide();
+
     uint32_t fault_addr = paging_read_cr2();
     uint32_t err = regs ? regs->err_code : 0;
 
