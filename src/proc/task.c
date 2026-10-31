@@ -264,6 +264,14 @@ task_t* task_get_current(void) {
 }
 
 /*
+ * task_get_idle:
+ * Returns pointer to the background idle task (PID 0).
+ */
+task_t* task_get_idle(void) {
+    return idle_task;
+}
+
+/*
  * task_set_current:
  * Updates the current task pointer.
  */

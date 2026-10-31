@@ -26,6 +26,12 @@ void scheduler_add_ready(task_t* task);
 /* Removes a task from the ready queue */
 void scheduler_remove_ready(task_t* task);
 
+/* Returns true if there is at least one task waiting in the ready queue */
+bool scheduler_has_ready(void);
+
+/* Selects the next runnable task from the ready queue */
+task_t* scheduler_pick_next(void);
+
 /*
  * schedule:
  * Core scheduler dispatch routine.

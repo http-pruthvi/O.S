@@ -71,6 +71,9 @@ void task_yield(void);
 /* Returns pointer to the currently executing task */
 task_t* task_get_current(void);
 
+/* Returns pointer to the idle task (PID 0) */
+task_t* task_get_idle(void);
+
 /* Updates current task pointer (used during context switches) */
 void task_set_current(task_t* task);
 
