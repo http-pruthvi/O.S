@@ -1,6 +1,11 @@
 #include "gui/desktop.h"
 #include "gui/wm.h"
 #include "gui/widget.h"
+#include "gui/theme.h"
+#include "gui/hud.h"
+#include "gui/waybar.h"
+#include "gui/dock.h"
+#include "gui/lockscreen.h"
 #include "apps/launcher.h"
 #include "apps/clock.h"
 #include "apps/explorer.h"
@@ -319,6 +324,24 @@ void desktop_run(void) {
             if (c == 27) { /* ESC key exits desktop */
                 serial_writestring("[DESKTOP] ESC pressed. Exiting desktop to console...\n");
                 break;
+            }
+
+            /* Intercept all keys if lock screen is active */
+            if (lockscreen_is_active()) {
+                lockscreen_handle_key(c);
+                continue;
+            }
+
+            if ((unsigned char)c == KEY_F5) {
+                serial_writestring("[DESKTOP] F5 pressed: Toggling Conky HUD widgets...\n");
+                hud_toggle();
+                wm_redraw_all();
+                continue;
+            }
+            if ((unsigned char)c == KEY_F6) {
+                serial_writestring("[DESKTOP] F6 pressed: Locking session...\n");
+                lockscreen_activate();
+                continue;
             }
             if ((unsigned char)c == KEY_F7) {
                 serial_writestring("[DESKTOP] F7 pressed: Opening Control Panel...\n");

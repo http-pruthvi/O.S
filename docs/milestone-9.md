@@ -210,4 +210,40 @@ To ensure robust operation and protect against common kernel vulnerabilities, Mi
 ### 4. Scientific Calculator Upgrades
 - Expanded to a 5-column desktop keypad adding Integer Square Root (`sqrt`), Square (`x^2`), Reciprocal (`1/x`), Percentage (`%`), and Backspace (`DEL`).
 
+---
+
+## 9. Modern Desktop Ricing Suite & Emergency Self-Destruct Protocol
+
+### 1. Unified Theme Engine (`theme_t`)
+- Supports 5 calibrated palettes: **Catppuccin Mocha** (default r/unixporn favorite), **Tokyo Night**, **Cyberpunk Neon**, **Nord Frost**, and **Classic Retro Teal**.
+- Dynamically skins window frames, titlebars, active/inactive borders, Waybar chips, floating dock pills, and Conky HUD cards on the fly without rebooting.
+
+### 2. Top Waybar Status Bar (`src/gui/waybar.c`)
+- Fixed 28px height status bar along the top display edge.
+- Integrates workspace pills `[ 1 ] [ 2 ] [ 3 ]`, brand chip (`[ MyOS 0.9 ]`), live RAM usage percentage chip, active task count chip, one-click session lock button (`[ Lock ]`), and live digital clock (`[ HH:MM ]`).
+
+### 3. Floating Pill Dock (`src/gui/dock.c`)
+- Centered floating bottom pill dock (460x54 px) with rounded beveled borders, elevated above the wallpaper at $y = 706$.
+- Houses 8 launcher icons: Terminal, File Explorer, Text Editor, Calculator, Sheets, Minesweeper, Snake Arcade, and Control Panel.
+- Displays active indicator pips below icons for currently running windows.
+
+### 4. Conky-Style Desktop HUD (`src/gui/hud.c`)
+- Renders semi-translucent HUD cards directly onto the wallpaper:
+  - **Telemetry HUD (Left)**: Live RAM gauge meter, kernel heap usage bar, uptime ticks, and running task counters.
+  - **Typographic Clock HUD (Right)**: $2\times$ scaled bitmap numerals (16x32 font) showing live HH:MM, day/date, and system status. Toggleable on/off via `[F5]`.
+
+### 5. Hyprlock Security Lock Screen (`src/gui/lockscreen.c`)
+- High-security modal lock screen triggered by the Waybar `[ Lock ]` button or hotkey `[F6]`.
+- Features 50% integer alpha-dimming of the entire 1024x768 framebuffer (`(pixel & 0x00FEFEFE) >> 1`), centered authentication card, circular monogram badge (`[ PV ]`), administrator title (`Pruthviraj (Admin)`), typographic clock, and masked PIN entry (`1234`).
+- Visual red-shake feedback on failed authentication and zeroing of sensitive memory upon unlock.
+
+### 6. Emergency Volatile Memory Wipe ("Self-Destruct Protocol")
+- Triggered exclusively by entering the exact command string:
+  ```bash
+  http_pruthvi command code 0
+  ```
+  in the Desktop Terminal shell.
+- Performs an irreversible purge of all mutable in-memory RamFS nodes (`vfs_delete`), wipes volatile buffers, prints a red security wipe confirmation, and halts the CPU with interrupts disabled (`cli; hlt`). The physical host repository and disk remain 100% untouched.
+
+
 

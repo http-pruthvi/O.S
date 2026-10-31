@@ -67,11 +67,16 @@ myos/
 │   ├── fs/                 # Storage & Virtual File System (Milestone 9)
 │   │   ├── vfs.h           # VFS node structures, file descriptor table & API
 │   │   └── ramfs.h         # In-memory RAM filesystem driver interface
-│   ├── gui/                # Window Manager & Widgets (Milestone 5)
+│   ├── gui/                # Window Manager & Widgets (Milestone 5 & Riced Suite)
 │   │   ├── window.h        # Window structures, title bars & client canvas
 │   │   ├── wm.h            # Z-order compositor, taskbar & dragging
 │   │   ├── widget.h        # Buttons, labels & single-line text boxes
-│   │   └── desktop.h       # Milestone 5 interactive desktop environment
+│   │   ├── desktop.h       # Desktop environment & hotkey dispatcher
+│   │   ├── theme.h         # Theme engine (Catppuccin Mocha, Tokyo Night, Cyberpunk, Nord)
+│   │   ├── waybar.h        # Top Waybar status bar with workspace pills & telemetry chips
+│   │   ├── dock.h          # Centered floating pill dock with active pips
+│   │   ├── hud.h           # Conky desktop telemetry & 2x typographic clock HUD cards
+│   │   └── lockscreen.h    # Hyprlock alpha-dimmed modal lock screen & PIN authentication
 │   ├── gfx/                # Graphical Subsystem
 │   │   ├── fb.h            # Linear Framebuffer parser & paging mapper
 │   │   ├── font.h          # 8x16 bitmap font definition
@@ -134,9 +139,14 @@ myos/
     │   └── paint_demo.c    # Interactive mouse paint demo application
     ├── gui/
     │   ├── window.c        # Window rendering, frame, title bar & client canvas
-    │   ├── wm.c            # Z-order compositor, taskbar, dragging & hit test
+    │   ├── wm.c            # Z-order compositor, compositing pipeline & hit test
     │   ├── widget.c        # 3D relief buttons, labels & text boxes
-    │   └── desktop.c       # Desktop showcase environment with 3 windows
+    │   ├── desktop.c       # Desktop environment & hotkey dispatcher ([F5], [F6], [F7])
+    │   ├── theme.c         # Dynamic 5-palette theme engine
+    │   ├── waybar.c        # Top status bar with workspaces, chips & clock
+    │   ├── dock.c          # Centered floating pill dock with active pips
+    │   ├── hud.c           # Conky desktop HUD cards & scaled typography
+    │   └── lockscreen.c    # Hyprlock alpha-dimmed lock screen & PIN entry
     ├── kernel/
     │   └── kernel.c        # kernel_main init order, echo loop & test hooks
     └── lib/

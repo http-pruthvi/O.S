@@ -1,4 +1,5 @@
 #include "gui/window.h"
+#include "gui/theme.h"
 #include "gfx/font.h"
 #include "gfx/gfx.h"
 #include "mm/heap.h"
@@ -250,9 +251,13 @@ void window_render(window_t* win, uint32_t* screen_buffer, uint32_t screen_pitch
     }
 
     bool focused = (win->flags & WINDOW_FLAG_FOCUSED) != 0;
-    uint32_t border_color = focused ? WIN_BORDER_ACTIVE : WIN_BORDER_INACTIVE;
-    uint32_t title_bg     = focused ? WIN_TITLE_ACTIVE  : WIN_TITLE_INACTIVE;
-    uint32_t title_fg     = focused ? WIN_TITLE_TXT_ACTIVE : WIN_TITLE_TXT_INACTIVE;
+    const theme_t* th = theme_get_current();
+    uint32_t border_color = focused ? (th ? th->border_active : WIN_BORDER_ACTIVE)
+                                    : (th ? th->border_inactive : WIN_BORDER_INACTIVE);
+    uint32_t title_bg     = focused ? (th ? th->title_active_bg : WIN_TITLE_ACTIVE)
+                                    : (th ? th->title_inactive_bg : WIN_TITLE_INACTIVE);
+    uint32_t title_fg     = focused ? (th ? th->title_active_fg : WIN_TITLE_TXT_ACTIVE)
+                                    : (th ? th->title_inactive_fg : WIN_TITLE_TXT_INACTIVE);
 
     /* 1. Draw outer 2px decorative border */
     for (int r = win->y; r < win->y + win->height; r++) {

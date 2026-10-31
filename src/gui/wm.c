@@ -1,5 +1,10 @@
 #include "gui/wm.h"
 #include "gui/widget.h"
+#include "gui/theme.h"
+#include "gui/hud.h"
+#include "gui/waybar.h"
+#include "gui/dock.h"
+#include "gui/lockscreen.h"
 #include "apps/launcher.h"
 #include "gfx/gfx.h"
 #include "gfx/font.h"
@@ -42,7 +47,14 @@ bool wm_init(void) {
     wm_drag_window = NULL;
     wm_prev_buttons = 0;
 
-    serial_writestring("[WM] Window Manager initialized successfully.\n");
+    /* Initialize Theme, HUD, Waybar, Dock and Lock Screen */
+    theme_init();
+    hud_init();
+    waybar_init();
+    dock_init();
+    lockscreen_init();
+
+    serial_writestring("[WM] Window Manager initialized successfully with Catppuccin Mocha theme.\n");
     return true;
 }
 
@@ -325,6 +337,9 @@ void wm_invalidate_rect(int x, int y, int w, int h) {
             gfx_draw_string(text_x, text_y, title, 0x00324866, s_wallpaper_color, true);
         }
 
+        /* Draw Conky Desktop HUD widgets */
+        hud_render(x, y, w, desktop_h);
+
         /* Draw desktop shortcut icons */
         launcher_render_desktop_icons(x, y, w, desktop_h);
     }
@@ -338,17 +353,28 @@ void wm_invalidate_rect(int x, int y, int w, int h) {
         curr = curr->prev;
     }
 
-    /* 3. Composite Taskbar if dirty rect touches the bottom */
+    /* 3. Composite Top Waybar Status Bar */
+    waybar_render(x, y, w, h);
+
+    /* 4. Composite Floating Pill Dock */
+    dock_render(x, y, w, h);
+
+    /* 5. Composite Taskbar if dirty rect touches the bottom */
     if (y + h > WM_TASKBAR_Y) {
         wm_render_taskbar(x, y, w, h);
     }
 
-    /* 4. Composite Start Menu if open and intersecting dirty rect */
+    /* 6. Composite Start Menu if open and intersecting dirty rect */
     if (launcher_is_start_menu_open()) {
         launcher_render_start_menu(x, y, w, h);
     }
 
-    /* 5. Flush to Video Memory */
+    /* 7. Composite Modal Lock Screen if active */
+    if (lockscreen_is_active()) {
+        lockscreen_render();
+    }
+
+    /* 8. Flush to Video Memory */
     gfx_flush_rect(x, y, w, h);
 }
 
@@ -367,13 +393,31 @@ void wm_redraw_all(void) {
 void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
     if (!ev) return;
 
+    /* Modal Lock Screen intercepts all mouse events */
+    if (lockscreen_is_active()) {
+        wm_prev_buttons = ev->buttons;
+        return;
+    }
+
     bool left_pressed  = (ev->buttons & MOUSE_BTN_LEFT) && !(wm_prev_buttons & MOUSE_BTN_LEFT);
     bool left_released = !(ev->buttons & MOUSE_BTN_LEFT) && (wm_prev_buttons & MOUSE_BTN_LEFT);
     bool left_down     = (ev->buttons & MOUSE_BTN_LEFT) != 0;
 
     /* 1. Handle Left Click Down */
     if (left_pressed) {
-        /* A. Handle open Start Menu clicks */
+        /* A. Check Top Waybar clicks */
+        if (waybar_handle_mouse(mx, my, left_pressed)) {
+            wm_prev_buttons = ev->buttons;
+            return;
+        }
+
+        /* B. Check Bottom Floating Dock clicks */
+        if (dock_handle_mouse(mx, my, left_pressed)) {
+            wm_prev_buttons = ev->buttons;
+            return;
+        }
+
+        /* C. Handle open Start Menu clicks */
         if (launcher_is_start_menu_open()) {
             if (launcher_handle_mouse(mx, my, left_pressed)) {
                 wm_prev_buttons = ev->buttons;

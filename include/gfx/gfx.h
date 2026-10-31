@@ -63,8 +63,14 @@ void gfx_fill_rect(int x, int y, int width, int height, uint32_t color);
 /* Draws a single character glyph using font8x16 */
 void gfx_draw_char(int x, int y, char c, uint32_t fg_color, uint32_t bg_color, bool transparent_bg);
 
+/* Draws a single character glyph scaled up by integer multiplier (e.g. scale=2 produces 16x32) */
+void gfx_draw_char_scaled(int x, int y, char c, int scale, uint32_t fg_color, uint32_t bg_color, bool transparent_bg);
+
 /* Draws a null-terminated string */
 void gfx_draw_string(int x, int y, const char* str, uint32_t fg_color, uint32_t bg_color, bool transparent_bg);
+
+/* Draws a null-terminated string scaled up by integer multiplier */
+void gfx_draw_string_scaled(int x, int y, const char* str, int scale, uint32_t fg_color, uint32_t bg_color, bool transparent_bg);
 
 /* Clears the entire back buffer to a solid color */
 void gfx_clear(uint32_t color);

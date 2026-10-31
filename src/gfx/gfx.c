@@ -303,6 +303,43 @@ void gfx_draw_string(int x, int y, const char* str, uint32_t fg_color, uint32_t 
 }
 
 /*
+ * gfx_draw_char_scaled:
+ * Draws an 8x16 bitmap glyph scaled up by integer factor (e.g. scale=2 produces 16x32).
+ */
+void gfx_draw_char_scaled(int x, int y, char c, int scale, uint32_t fg_color, uint32_t bg_color, bool transparent_bg) {
+    if (!back_buffer || scale <= 0) return;
+
+    const uint8_t* glyph = font_get_glyph(c);
+    if (!glyph) return;
+
+    for (uint32_t row = 0; row < FONT_GLYPH_HEIGHT; row++) {
+        uint8_t bits = glyph[row];
+        for (uint32_t col = 0; col < FONT_GLYPH_WIDTH; col++) {
+            bool on = (bits & (0x80 >> col)) != 0;
+            if (on) {
+                gfx_fill_rect(x + (int)col * scale, y + (int)row * scale, scale, scale, fg_color);
+            } else if (!transparent_bg) {
+                gfx_fill_rect(x + (int)col * scale, y + (int)row * scale, scale, scale, bg_color);
+            }
+        }
+    }
+}
+
+/*
+ * gfx_draw_string_scaled:
+ * Renders a null-terminated string using scaled bitmap font.
+ */
+void gfx_draw_string_scaled(int x, int y, const char* str, int scale, uint32_t fg_color, uint32_t bg_color, bool transparent_bg) {
+    if (!str || scale <= 0) return;
+    int cur_x = x;
+    while (*str) {
+        gfx_draw_char_scaled(cur_x, y, *str, scale, fg_color, bg_color, transparent_bg);
+        cur_x += FONT_GLYPH_WIDTH * scale;
+        str++;
+    }
+}
+
+/*
  * gfx_clear:
  * Fills the entire back buffer with a solid 32-bit color.
  */
