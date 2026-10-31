@@ -3,7 +3,7 @@ param (
     [string]$SourceIso = ""
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 
 # 1. Locate VBoxManage executable
 $VBoxManage = if (Get-Command VBoxManage -ErrorAction SilentlyContinue) {
@@ -13,7 +13,7 @@ $VBoxManage = if (Get-Command VBoxManage -ErrorAction SilentlyContinue) {
 } elseif (Test-Path "C:\Program Files (x86)\Oracle\VirtualBox\VBoxManage.exe") {
     "C:\Program Files (x86)\Oracle\VirtualBox\VBoxManage.exe"
 } else {
-    Write-Error "[ERROR] VBoxManage.exe not found! Please install VirtualBox or add it to PATH."
+    Write-Host "[ERROR] VBoxManage.exe not found! Please install VirtualBox or add it to PATH."
     exit 1
 }
 
@@ -28,7 +28,7 @@ try {
         $state = $matches[1]
         if ($state -ne "poweroff" -and $state -ne "saved") {
             Write-Host "[RUN] VM '$VmName' is in state '$state'. Powering off..."
-            & $VBoxManage controlvm $VmName poweroff *>$null
+            & $VBoxManage controlvm $VmName poweroff 2>$null | Out-Null
             
             # Wait for VM to reach poweroff state (timeout: 10s)
             $timeoutSeconds = 10
@@ -41,11 +41,11 @@ try {
                     break
                 }
             }
-            Start-Sleep -Seconds 1
+            Start-Sleep -Milliseconds 1500
         }
     }
 } catch {
-    Write-Host "[WARN] Could not query VM state: $_"
+    Write-Host "[WARN] Exception while checking VM state: $_"
 }
 
 # 3. Ensure destination directory exists
@@ -76,6 +76,19 @@ if ($SourceIso -and (Test-Path $SourceIso)) {
 
 # 5. Start the VirtualBox VM
 Write-Host "[RUN] Starting VirtualBox VM '$VmName'..."
-& $VBoxManage startvm $VmName
-Write-Host "[RUN] VM started successfully."
+$started = $false
+for ($attempt = 1; $attempt -le 5; $attempt++) {
+    & $VBoxManage startvm $VmName
+    if ($LASTEXITCODE -eq 0) {
+        $started = $true
+        Write-Host "[RUN] VM started successfully."
+        break
+    }
+    Write-Host "[RUN] Waiting for session unlock (attempt $attempt/5)..."
+    Start-Sleep -Seconds 1
+}
+if (-not $started) {
+    Write-Host "[ERROR] Could not start VM '$VmName'."
+    exit 1
+}
 
