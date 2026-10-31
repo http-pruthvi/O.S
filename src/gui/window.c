@@ -76,10 +76,14 @@ window_t* window_create(int x, int y, int width, int height, const char* title, 
 
 /*
  * window_destroy:
- * Frees client surface memory and window container.
+ * Frees client surface memory, child widgets, and window container.
  */
 void window_destroy(window_t* win) {
     if (!win) return;
+
+    /* Free all attached child widgets */
+    extern void widget_destroy_all(window_t* win);
+    widget_destroy_all(win);
 
     if (win->client_buffer) {
         kfree(win->client_buffer);

@@ -1,4 +1,5 @@
 #include "gui/wm.h"
+#include "gui/widget.h"
 #include "gfx/gfx.h"
 #include "gfx/font.h"
 #include "drivers/timer.h"
@@ -471,6 +472,13 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
         }
     }
 
+    /* 4. Dispatch client mouse events to the focused window widgets */
+    if (!wm_drag_active && wm_top_window && (wm_top_window->flags & WINDOW_FLAG_VISIBLE)) {
+        int rx = mx - wm_top_window->client_x;
+        int ry = my - wm_top_window->client_y;
+        widget_dispatch_mouse(wm_top_window, rx, ry, left_down, left_pressed, left_released);
+    }
+
     wm_prev_buttons = ev->buttons;
 }
 
@@ -479,8 +487,9 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
  * Routes keystrokes to the focused window.
  */
 void wm_handle_keyboard(char c) {
-    (void)c;
-    /* Handled by focused widgets in Phase B */
+    if (wm_top_window && (wm_top_window->flags & WINDOW_FLAG_VISIBLE)) {
+        widget_dispatch_key(wm_top_window, c);
+    }
 }
 
 /*
