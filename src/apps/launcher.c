@@ -1,4 +1,5 @@
 #include "apps/launcher.h"
+#include "apps/calc.h"
 #include "gui/wm.h"
 #include "gui/window.h"
 #include "gui/widget.h"
@@ -187,10 +188,7 @@ void launcher_launch_about(void) {
     wm_add_window(s_win_about);
 }
 
-/* Stubs for Commit 1 (will be wired in Commits 2-5) */
-void __attribute__((weak)) app_calc_open(void) {
-    serial_writestring("[LAUNCHER] Calculator requested (app_calc_open stub)\n");
-}
+/* Stubs for future commits (will be wired in Commits 3-5) */
 void __attribute__((weak)) app_editor_open(void) {
     serial_writestring("[LAUNCHER] Text Editor requested (app_editor_open stub)\n");
 }

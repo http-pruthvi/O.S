@@ -521,7 +521,11 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
  */
 void wm_handle_keyboard(char c) {
     if (wm_top_window && (wm_top_window->flags & WINDOW_FLAG_VISIBLE)) {
-        widget_dispatch_key(wm_top_window, c);
+        if (wm_top_window->on_key) {
+            wm_top_window->on_key(wm_top_window, c);
+        } else {
+            widget_dispatch_key(wm_top_window, c);
+        }
     }
 }
 

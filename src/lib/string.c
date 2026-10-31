@@ -89,3 +89,48 @@ int memcmp(const void* s1, const void* s2, size_t count) {
     }
     return 0;
 }
+
+/*
+ * strcpy:
+ * Copies the string pointed to by src, including the terminating null byte,
+ * to the buffer pointed to by dest.
+ */
+char* strcpy(char* dest, const char* src) {
+    if (!dest || !src) return dest;
+    char* d = dest;
+    while ((*d++ = *src++) != '\0') {}
+    return dest;
+}
+
+/*
+ * strncpy:
+ * Copies at most count bytes from src to dest. If src is less than count bytes,
+ * remaining bytes in dest are filled with null bytes.
+ */
+char* strncpy(char* dest, const char* src, size_t count) {
+    if (!dest || !src) return dest;
+    size_t i = 0;
+    for (i = 0; i < count && src[i] != '\0'; i++) {
+        dest[i] = src[i];
+    }
+    for (; i < count; i++) {
+        dest[i] = '\0';
+    }
+    return dest;
+}
+
+/*
+ * strcmp:
+ * Compares two null-terminated strings s1 and s2 lexicographically.
+ */
+int strcmp(const char* s1, const char* s2) {
+    if (!s1 && !s2) return 0;
+    if (!s1) return -1;
+    if (!s2) return 1;
+
+    while (*s1 && (*s1 == *s2)) {
+        s1++;
+        s2++;
+    }
+    return *(const unsigned char*)s1 - *(const unsigned char*)s2;
+}

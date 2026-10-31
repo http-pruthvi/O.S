@@ -70,6 +70,9 @@ typedef struct window {
 
     /* User callback invoked when window is requested to close */
     void (*on_close)(struct window* win);
+
+    /* Optional user callback invoked when a key is pressed while window has focus */
+    void (*on_key)(struct window* win, char c);
 } window_t;
 
 /*
@@ -105,3 +108,4 @@ void window_render(window_t* win, uint32_t* screen_buffer, uint32_t screen_pitch
                    int clip_x, int clip_y, int clip_w, int clip_h);
 
 #endif /* GUI_WINDOW_H */
+
