@@ -1,6 +1,7 @@
 #include "lib/kprintf.h"
 #include "drivers/vga.h"
 #include "drivers/serial.h"
+#include "arch/lock.h"
 
 /*
  * kputc:
@@ -154,11 +155,14 @@ int vkprintf(const char* fmt, va_list args) {
 /*
  * kprintf:
  * Variadic wrapper around vkprintf.
+ * Thread-safe: protected by irq_save/irq_restore to prevent interleaving output.
  */
 int kprintf(const char* fmt, ...) {
+    uint32_t flags = irq_save();
     va_list args;
     va_start(args, fmt);
     int written = vkprintf(fmt, args);
     va_end(args);
+    irq_restore(flags);
     return written;
 }

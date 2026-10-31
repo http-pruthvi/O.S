@@ -1,5 +1,6 @@
 #include "mm/pmm.h"
 #include "mm/memmap.h"
+#include "arch/lock.h"
 #include "lib/kprintf.h"
 #include "lib/string.h"
 
@@ -145,7 +146,10 @@ void pmm_init(const multiboot_info_t* mboot_info) {
  *   32-bit physical base address of the allocated frame, or 0 if Out of Memory.
  */
 uintptr_t pmm_alloc_frame(void) {
+    uint32_t flags = irq_save();
+
     if (free_memory_frames == 0) {
+        irq_restore(flags);
         kprintf("[PMM] Error: Out of Physical Memory!\n");
         return 0;
     }
@@ -169,6 +173,7 @@ uintptr_t pmm_alloc_frame(void) {
                         used_memory_frames++;
                         free_memory_frames--;
                         last_alloc_index = frame + 1;
+                        irq_restore(flags);
                         return (uintptr_t)(frame * PAGE_SIZE);
                     }
                 }
@@ -176,6 +181,7 @@ uintptr_t pmm_alloc_frame(void) {
         }
     }
 
+    irq_restore(flags);
     return 0;
 }
 
@@ -193,18 +199,23 @@ void pmm_free_frame(uintptr_t phys_addr) {
         return;
     }
 
+    uint32_t flags = irq_save();
+
     if ((phys_addr & (PAGE_SIZE - 1)) != 0) {
+        irq_restore(flags);
         kprintf("[PMM] Error: Frame 0x%x is not 4KB aligned!\n", phys_addr);
         return;
     }
 
     uint32_t frame = phys_addr / PAGE_SIZE;
     if (frame >= total_memory_frames) {
+        irq_restore(flags);
         kprintf("[PMM] Error: Frame 0x%x is out of range!\n", phys_addr);
         return;
     }
 
     if (!pmm_bitmap_test(frame)) {
+        irq_restore(flags);
         kprintf("[PMM] Error: Double free detected on frame 0x%x!\n", phys_addr);
         return;
     }
@@ -217,6 +228,8 @@ void pmm_free_frame(uintptr_t phys_addr) {
     if (frame < last_alloc_index) {
         last_alloc_index = frame;
     }
+
+    irq_restore(flags);
 }
 
 uint32_t pmm_total_frames(void) {

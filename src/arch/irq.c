@@ -104,11 +104,15 @@ void irq_dispatch(registers_t* regs) {
         }
     }
 
-    /* 3. Invoke driver callback if registered */
+    /* 3. Send standard End-of-Interrupt to acknowledge PIC before invoking driver handler.
+     * Crucial for multitasking: If a driver callback (e.g. timer IRQ 0) triggers a preemptive
+     * context switch (schedule()), the PIC must already be acknowledged so subsequent hardware
+     * interrupts are not permanently blocked while the current task is suspended.
+     */
+    pic_send_eoi(irq);
+
+    /* 4. Invoke driver callback if registered */
     if (irq_handlers[irq] != NULL) {
         irq_handlers[irq](regs);
     }
-
-    /* 4. Send standard End-of-Interrupt to acknowledge PIC */
-    pic_send_eoi(irq);
 }

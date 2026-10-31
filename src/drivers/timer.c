@@ -4,6 +4,8 @@
 #include "drivers/vga.h"
 #include "gfx/fb.h"
 #include "lib/io.h"
+#include "proc/task.h"
+#include "proc/scheduler.h"
 
 /* Global tick counter incremented on every IRQ 0 tick */
 static volatile uint32_t timer_ticks = 0;
@@ -55,6 +57,11 @@ static void timer_handler(registers_t* regs) {
             format_uptime_clock(seconds, clock_buf);
             vga_put_at(65, 0, clock_buf, 0x1F);
         }
+    }
+
+    /* Update preemptive task scheduler if multitasking is active */
+    if (task_get_current() != NULL) {
+        scheduler_tick();
     }
 }
 

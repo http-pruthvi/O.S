@@ -1,6 +1,7 @@
 #include "mm/heap.h"
 #include "mm/paging.h"
 #include "mm/pmm.h"
+#include "arch/lock.h"
 #include "lib/kprintf.h"
 #include "lib/string.h"
 
@@ -116,6 +117,8 @@ void* kmalloc(size_t size) {
         return NULL;
     }
 
+    uint32_t flags = irq_save();
+
     /* Round up requested size to an 8-byte multiple for alignment */
     size = (size + 7) & ~7;
 
@@ -136,6 +139,7 @@ void* kmalloc(size_t size) {
         size_t needed = sizeof(heap_block_t) + size;
         best_fit = heap_expand(needed);
         if (!best_fit) {
+            irq_restore(flags);
             return NULL;
         }
     }
@@ -166,8 +170,11 @@ void* kmalloc(size_t size) {
 
     best_fit->is_free = 0;
 
+    void* result = (void*)((uintptr_t)best_fit + sizeof(heap_block_t));
+    irq_restore(flags);
+
     /* Return pointer to usable payload immediately following the header */
-    return (void*)((uintptr_t)best_fit + sizeof(heap_block_t));
+    return result;
 }
 
 /*
@@ -193,8 +200,11 @@ void kfree(void* ptr) {
         return; /* Freeing NULL is a safe no-op */
     }
 
+    uint32_t flags = irq_save();
+
     /* Validate 8-byte alignment */
     if (((uintptr_t)ptr % 8) != 0) {
+        irq_restore(flags);
         kprintf("[HEAP] Error: Attempted to free unaligned pointer %p!\n", ptr);
         return;
     }
@@ -204,6 +214,7 @@ void kfree(void* ptr) {
 
     /* Verify magic signature to prevent heap corruption from arbitrary pointers */
     if (block->magic != HEAP_MAGIC) {
+        irq_restore(flags);
         kprintf("[HEAP] Error: Corrupted header or invalid pointer %p (magic: 0x%x)!\n",
                 ptr, block->magic);
         return;
@@ -211,6 +222,7 @@ void kfree(void* ptr) {
 
     /* Detect double frees */
     if (block->is_free == 1) {
+        irq_restore(flags);
         kprintf("[HEAP] Error: Double free detected on pointer %p!\n", ptr);
         return;
     }
@@ -246,6 +258,8 @@ void kfree(void* ptr) {
             }
         }
     }
+
+    irq_restore(flags);
 }
 
 /*
@@ -253,6 +267,8 @@ void kfree(void* ptr) {
  * Computes live heap metrics by traversing all blocks.
  */
 void heap_stats(size_t* used_bytes, size_t* free_bytes, size_t* block_count) {
+    uint32_t flags = irq_save();
+
     size_t u = 0;
     size_t f = 0;
     size_t c = 0;
@@ -271,6 +287,8 @@ void heap_stats(size_t* used_bytes, size_t* free_bytes, size_t* block_count) {
     if (used_bytes)  *used_bytes  = u;
     if (free_bytes)  *free_bytes  = f;
     if (block_count) *block_count = c;
+
+    irq_restore(flags);
 }
 
 /*
