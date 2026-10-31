@@ -14,3 +14,4 @@
 void app_control_open(void);
 
 #endif /* APPS_CONTROL_H */
+

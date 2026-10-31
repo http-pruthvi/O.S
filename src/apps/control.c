@@ -113,3 +113,4 @@ void app_control_open(void) {
     wm_add_window(s_control_win);
     serial_writestring("[CONTROL] Control Panel opened\n");
 }
+

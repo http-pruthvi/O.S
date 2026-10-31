@@ -15,3 +15,4 @@
 void app_snake_open(void);
 
 #endif /* APPS_SNAKE_H */
+

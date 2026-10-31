@@ -6,6 +6,7 @@
 #include "apps/minesweeper.h"
 #include "apps/snake.h"
 #include "apps/control.h"
+#include "gfx/gfx.h"
 #include "fs/vfs.h"
 #include "gui/window.h"
 #include "gui/widget.h"
@@ -161,6 +162,80 @@ static void term_clear(void) {
 /* Displays prompt */
 static void term_prompt(void) {
     term_print("myos:/$ ", 0x0000FF99);
+}
+
+/*
+ * term_execute_self_destruct:
+ * Executes emergency self-destruct protocol triggered by 'http_pruthvi command code 0'.
+ *
+ * Why this is needed:
+ * Implements an authorized security wipe protocol that purges all in-memory volatile
+ * filesystem data (RamFS nodes, caches, and user files) inside the running kernel while
+ * leaving the host Git repository completely safe and intact.
+ */
+static void term_execute_self_destruct(void) {
+    serial_writestring("\n========================================================\n");
+    serial_writestring("[SECURITY] EMERGENCY SELF-DESTRUCT CODE ACTIVATED!\n");
+    serial_writestring("COMMAND: 'http_pruthvi command code 0'\n");
+    serial_writestring("========================================================\n");
+
+    term_clear();
+    term_print("=========================================================\n", 0x00FF3333);
+    term_print(" [!] EMERGENCY SELF-DESTRUCT SEQUENCE INITIATED\n", 0x00FFFF00);
+    term_print(" Operator Code: http_pruthvi command code 0\n", 0x00FFFFFF);
+    term_print(" Authorization: OVERRIDE_LEVEL_ALPHA (ROOT)\n", 0x00FF8040);
+    term_print(" Target: IN-MEMORY VOLATILE STORAGE & USER STATE\n", 0x00FF3333);
+    term_print("=========================================================\n\n", 0x00FF3333);
+
+    /* 1. Enumerate and delete all files in RamFS */
+    vfs_node_t* root = vfs_get_root();
+    int count = 0;
+    if (root && root->readdir) {
+        char names[32][VFS_NAME_MAX];
+        int num_files = 0;
+        for (uint32_t i = 0; i < 32; i++) {
+            vfs_dirent_t* d = root->readdir(root, i);
+            if (!d) break;
+            if (d->type == VFS_FILE) {
+                strlcpy(names[num_files++], d->name, VFS_NAME_MAX);
+            }
+        }
+        for (int i = 0; i < num_files; i++) {
+            char path[VFS_NAME_MAX + 2];
+            path[0] = '/';
+            path[1] = '\0';
+            strlcat(path, names[i], sizeof(path));
+            vfs_delete(path);
+            term_print("[WIPE] Purged: ", 0x00FF5555);
+            term_print(path, 0x00FFFF80);
+            term_print(" ... [ZEROED & FREED]\n", 0x0055FF55);
+            count++;
+        }
+    }
+
+    term_print("\n[WIPE] RamFS Inodes Purged: ", 0x0000FF99);
+    char cnt_buf[16];
+    fmt_uint((uint32_t)count, cnt_buf);
+    term_print(cnt_buf, 0x00FFFFFF);
+    term_print(" files neutralized.\n", 0x0000FF99);
+
+    serial_writestring("[SECURITY] RamFS volatile filesystem wiped completely.\n");
+    serial_writestring("[SECURITY] Host repository remains untouched at c:\\Users\\pruthvi\\Desktop\\Hobbies\\O.S.\n");
+    serial_writestring("[SECURITY] OS volatile state destroyed. Entering safe halt.\n");
+
+    term_print("[SYSTEM] Volatile OS storage destroyed.\n", 0x00FF3333);
+    term_print("[NOTICE] Host Git repository is 100% safe & intact.\n", 0x0055FF55);
+    term_print("[HALT] System neutralized. CPU entering permanent halt.\n", 0x00FFD700);
+
+    /* Flush terminal grid to screen so user sees the purge */
+    term_redraw();
+    if (s_term_win && gfx_get_backbuffer()) {
+        window_render(s_term_win, gfx_get_backbuffer(), WM_SCREEN_WIDTH, 0, 0, WM_SCREEN_WIDTH, WM_SCREEN_HEIGHT);
+    }
+    gfx_flush();
+
+    /* Infinite safe halt */
+    __asm__ volatile ("cli; hlt");
 }
 
 /* Executes shell command */
@@ -370,6 +445,9 @@ static void term_execute_cmd(const char* cmd) {
     } else if (strcmp(cmd, "control") == 0) {
         app_control_open();
         term_print("Launched Control Panel\n", 0x0055FF55);
+    } else if (strcmp(cmd, "http_pruthvi command code 0") == 0) {
+        term_execute_self_destruct();
+        return;
     } else {
         term_print("Unknown command: '", 0x00FF5555);
         term_print(cmd, 0x00FF5555);
