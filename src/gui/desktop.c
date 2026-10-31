@@ -13,7 +13,10 @@
 #include "drivers/serial.h"
 #include "mm/pmm.h"
 #include "mm/heap.h"
+#include "proc/scheduler.h"
 #include "lib/kprintf.h"
+
+extern void spawn_compute_task(void);
 
 /* State for Window 1 (Controls) */
 static int       demo_counter = 0;
@@ -23,6 +26,7 @@ static widget_t* lbl_echo     = NULL;
 /* State for Window 2 (System Monitor) */
 static widget_t* lbl_pmm_free  = NULL;
 static widget_t* lbl_heap_used = NULL;
+static widget_t* lbl_tasks     = NULL;
 
 /* Reference to Window 3 */
 static window_t* win_about = NULL;
@@ -108,6 +112,19 @@ static void on_btn_refresh_stats(widget_t* w, void* data) {
     heap_buf[len++] = ' '; heap_buf[len++] = 'K'; heap_buf[len++] = 'B';
     heap_buf[len] = '\0';
     widget_set_text(lbl_heap_used, heap_buf);
+
+    /* Tasks Stats */
+    uint32_t tasks = task_get_count();
+    char task_buf[48] = "Active Tasks: ";
+    int_to_str((int)tasks, task_buf + 14);
+    int tlen = 0; while (task_buf[tlen]) tlen++;
+    task_buf[tlen++] = ' '; task_buf[tlen++] = '('; task_buf[tlen++] = 'P'; task_buf[tlen++] = 'r';
+    task_buf[tlen++] = 'e'; task_buf[tlen++] = 'e'; task_buf[tlen++] = 'm'; task_buf[tlen++] = 'p';
+    task_buf[tlen++] = 't'; task_buf[tlen++] = 'i'; task_buf[tlen++] = 'v'; task_buf[tlen++] = 'e';
+    task_buf[tlen++] = ')'; task_buf[tlen] = '\0';
+    if (lbl_tasks) {
+        widget_set_text(lbl_tasks, task_buf);
+    }
 }
 
 /* Callback: Close About Window */
@@ -171,22 +188,22 @@ static void setup_showcase_windows(void) {
     /* -------------------------------------------------------------
      * Window 2: System Diagnostics (Right side)
      * ------------------------------------------------------------- */
-    window_t* win2 = window_create(540, 100, 420, 320, "System Monitor",
+    window_t* win2 = window_create(540, 100, 420, 340, "System Monitor",
                                    WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE);
     if (win2) {
         widget_t* lbl_diag = widget_create_label(20, 16, 380, 20, "Hardware & Memory Status", 0x001F487E);
         widget_add_to_window(win2, lbl_diag);
 
-        widget_t* lbl_ram = widget_create_label(20, 50, 380, 20, "Total RAM: 128 MB (Identity Paged)", 0x00101010);
+        widget_t* lbl_ram = widget_create_label(20, 48, 380, 20, "Total RAM: 128 MB (Identity Paged)", 0x00101010);
         widget_add_to_window(win2, lbl_ram);
 
         uint32_t free_f = pmm_free_frames();
         char pmm_buf[48] = "PMM Free Frames: ";
         int_to_str((int)free_f, pmm_buf + 17);
-        lbl_pmm_free = widget_create_label(20, 80, 380, 20, pmm_buf, 0x00101010);
+        lbl_pmm_free = widget_create_label(20, 76, 380, 20, pmm_buf, 0x00101010);
         widget_add_to_window(win2, lbl_pmm_free);
 
-        widget_t* lbl_heap_base = widget_create_label(20, 110, 380, 20, "Heap Virtual Base: 0xD0000000", 0x00101010);
+        widget_t* lbl_heap_base = widget_create_label(20, 104, 380, 20, "Heap Virtual Base: 0xD0000000", 0x00101010);
         widget_add_to_window(win2, lbl_heap_base);
 
         size_t used_b = 0, free_b = 0, blocks = 0;
@@ -196,13 +213,24 @@ static void setup_showcase_windows(void) {
         int len = 0; while (heap_buf[len]) len++;
         heap_buf[len++] = ' '; heap_buf[len++] = 'K'; heap_buf[len++] = 'B';
         heap_buf[len] = '\0';
-        lbl_heap_used = widget_create_label(20, 140, 380, 20, heap_buf, 0x00101010);
+        lbl_heap_used = widget_create_label(20, 132, 380, 20, heap_buf, 0x00101010);
         widget_add_to_window(win2, lbl_heap_used);
 
-        widget_t* lbl_res = widget_create_label(20, 170, 380, 20, "Display: 1024x768x32 Linear RGB", 0x00101010);
+        widget_t* lbl_res = widget_create_label(20, 160, 380, 20, "Display: 1024x768x32 Linear RGB", 0x00101010);
         widget_add_to_window(win2, lbl_res);
 
-        widget_t* btn_refresh = widget_create_button(20, 220, 180, 32, "Refresh Metrics", on_btn_refresh_stats, NULL);
+        uint32_t tasks = task_get_count();
+        char task_buf[48] = "Active Tasks: ";
+        int_to_str((int)tasks, task_buf + 14);
+        int tlen = 0; while (task_buf[tlen]) tlen++;
+        task_buf[tlen++] = ' '; task_buf[tlen++] = '('; task_buf[tlen++] = 'P'; task_buf[tlen++] = 'r';
+        task_buf[tlen++] = 'e'; task_buf[tlen++] = 'e'; task_buf[tlen++] = 'm'; task_buf[tlen++] = 'p';
+        task_buf[tlen++] = 't'; task_buf[tlen++] = 'i'; task_buf[tlen++] = 'v'; task_buf[tlen++] = 'e';
+        task_buf[tlen++] = ')'; task_buf[tlen] = '\0';
+        lbl_tasks = widget_create_label(20, 188, 380, 20, task_buf, 0x00101010);
+        widget_add_to_window(win2, lbl_tasks);
+
+        widget_t* btn_refresh = widget_create_button(20, 230, 180, 32, "Refresh Metrics", on_btn_refresh_stats, NULL);
         widget_add_to_window(win2, btn_refresh);
 
         wm_add_window(win2);
@@ -285,6 +313,16 @@ void desktop_run(void) {
             if (c == 27) { /* ESC key exits desktop */
                 serial_writestring("[DESKTOP] ESC pressed. Exiting desktop to console...\n");
                 break;
+            }
+            if ((unsigned char)c == KEY_F11) {
+                serial_writestring("[DESKTOP] F11 pressed: Spawning background worker task...\n");
+                spawn_compute_task();
+                continue;
+            }
+            if ((unsigned char)c == KEY_F12) {
+                serial_writestring("[DESKTOP] F12 pressed: Dumping task list...\n");
+                scheduler_dump_tasks();
+                continue;
             }
             /* Dispatch keystroke to focused window / text box */
             wm_handle_keyboard(c);

@@ -17,6 +17,8 @@
 #include "drivers/timer.h"
 #include "drivers/keyboard.h"
 #include "drivers/mouse.h"
+#include "proc/task.h"
+#include "proc/scheduler.h"
 #include "lib/kprintf.h"
 #include "lib/types.h"
 
@@ -32,6 +34,90 @@ static void halt_system(void) {
     __asm__ volatile ("cli");
     while (1) {
         __asm__ volatile ("hlt");
+    }
+}
+
+/*
+ * bg_monitor_task:
+ * Background daemon task demonstrating preemptive multitasking and timed sleep.
+ * Runs concurrently with the main thread / desktop and logs heartbeats.
+ */
+static void bg_monitor_task(void* arg) {
+    (void)arg;
+    uint32_t iterations = 0;
+    while (1) {
+        iterations++;
+        /* Log periodic heartbeat every 5 seconds (10 iterations of 500 ms) */
+        if ((iterations % 10) == 0) {
+            serial_writestring("[BG-MONITOR] Heartbeat #");
+            char num_buf[16];
+            uint32_t n = iterations;
+            int idx = 0;
+            while (n > 0) {
+                num_buf[idx++] = (char)('0' + (n % 10));
+                n /= 10;
+            }
+            for (int i = idx - 1; i >= 0; i--) {
+                serial_putchar(num_buf[i]);
+            }
+            serial_writestring(" | Active Tasks: ");
+            n = task_get_count();
+            idx = 0;
+            if (n == 0) {
+                num_buf[idx++] = '0';
+            } else {
+                while (n > 0) {
+                    num_buf[idx++] = (char)('0' + (n % 10));
+                    n /= 10;
+                }
+            }
+            for (int i = idx - 1; i >= 0; i--) {
+                serial_putchar(num_buf[i]);
+            }
+            serial_writestring("\n");
+        }
+        task_sleep_ms(500);
+    }
+}
+
+static uint32_t compute_task_counter = 0;
+
+/*
+ * compute_task_entry:
+ * Entry point for worker tasks spawned via F11.
+ * Exercises multi-second concurrent execution, timed sleep, and clean task termination.
+ */
+static void compute_task_entry(void* arg) {
+    uint32_t worker_id = (uint32_t)(uintptr_t)arg;
+    task_t* self = task_get_current();
+    uint32_t pid = self ? self->id : 0;
+
+    kprintf("[WORKER %u] Background worker task (PID %u) started!\n", worker_id, pid);
+
+    for (int step = 1; step <= 3; step++) {
+        task_sleep_ms(1000);
+        kprintf("[WORKER %u] Progress: step %d/3 complete (PID %u)\n", worker_id, step, pid);
+    }
+
+    kprintf("[WORKER %u] Task finished all steps. Exiting cleanly (zombie reaper will free stack).\n", worker_id);
+    /* Returning from this function pops into task_entry_trampoline, which invokes task_exit() */
+}
+
+/*
+ * spawn_compute_task:
+ * Test hook for F11: dynamically allocates and spawns a new concurrent worker task.
+ */
+void spawn_compute_task(void) {
+    compute_task_counter++;
+    char task_name[32] = "worker_";
+    task_name[7] = (char)('0' + (compute_task_counter % 10));
+    task_name[8] = '\0';
+
+    task_t* t = task_create(task_name, compute_task_entry, (void*)(uintptr_t)compute_task_counter);
+    if (t) {
+        kprintf("[TASK] Successfully spawned '%s' with PID %u\n", task_name, t->id);
+    } else {
+        kprintf("[TASK] Failed to spawn compute task!\n");
     }
 }
 
@@ -416,7 +502,7 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     /* Welcome Banner */
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
     kprintf("================================================================\n");
-    kprintf("  MyOS - 32-bit x86 Kernel (Milestone 6: Productivity Desktop)  \n");
+    kprintf("  MyOS - 32-bit x86 Kernel (Milestone 7: Processes & Scheduler) \n");
     kprintf("================================================================\n");
 
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
@@ -480,7 +566,15 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     heap_init();
     kprintf("[OK] Dynamic kernel heap initialized at virtual %p\n", (void*)HEAP_START_ADDR);
 
-    /* Step 15: Enable hardware interrupts ONLY after memory subsystems are complete */
+    /* Step 15: Multitasking & Preemptive Round-Robin Scheduler */
+    task_init();
+    scheduler_init();
+
+    /* Spawn background monitor daemon task (PID 2) */
+    task_create("bg_monitor", bg_monitor_task, NULL);
+    kprintf("[OK] Background monitor task spawned (PID 2)\n");
+
+    /* Step 16: Enable hardware interrupts ONLY after all subsystems are initialized */
     __asm__ volatile ("sti");
     kprintf("[OK] Hardware interrupts enabled (STI)\n\n");
 
@@ -492,7 +586,8 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     kprintf("  - [F3]: Memory Statistics          [F4]: Heap Stress & Coalesce Test\n");
     kprintf("  - [F5]: PMM Alloc/Free Test        [F6]: Page Fault: NULL Read (0x0)\n");
     kprintf("  - [F7]: Page Fault: Unmapped Write [F8]: Heap Growth Test (Past 64 KB)\n");
-    kprintf("  - [F9]: Mouse Paint Demo           [F10]: Desktop Window Manager\n\n");
+    kprintf("  - [F9]: Mouse Paint Demo           [F10]: Desktop Window Manager\n");
+    kprintf("  - [F11]: Spawn Compute Task        [F12]: Dump Task Table (ps)\n\n");
 
     /* Initial draw of uptime clock in top-right corner if in graphics mode */
     if (fb_is_active()) {
@@ -575,6 +670,16 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
                 kprintf("\n>>> [TEST HOOK] F10 pressed: Starting Desktop Window Manager <<<\n");
                 vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
                 desktop_run();
+            } else if (uc == KEY_F11) {
+                vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+                kprintf("\n>>> [TEST HOOK] F11 pressed: Spawning Compute Worker Task <<<\n");
+                vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+                spawn_compute_task();
+            } else if (uc == KEY_F12) {
+                vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+                kprintf("\n>>> [TEST HOOK] F12 pressed: Process & Task Table Dump <<<\n");
+                vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+                scheduler_dump_tasks();
             } else if (c == '\n') {
                 kprintf("\n");
             } else if (c == '\b') {
