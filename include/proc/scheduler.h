@@ -14,7 +14,7 @@
  */
 
 /* External assembly prototypes from switch.asm */
-extern void switch_context(uint32_t** old_esp, uint32_t* new_esp);
+extern void switch_context(uint32_t* old_esp, uint32_t new_esp);
 extern void task_entry_trampoline(void);
 
 /* Initializes scheduler queues and state */

@@ -21,7 +21,7 @@ extern task_exit
 ; Swaps execution context from an old task to a new task.
 ;
 ; C signature:
-;   void switch_context(uint32_t** old_esp, uint32_t* new_esp);
+;   void switch_context(uint32_t* old_esp, uint32_t new_esp);
 ;
 ; Parameters on entry:
 ;   [esp + 4] = old_esp: pointer to uint32_t storing old task's stack pointer
