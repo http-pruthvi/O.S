@@ -95,5 +95,5 @@ Keep a running docs/architecture.md that is updated as layers get added.
 - M5 (DONE): Window Manager and Widgets: windows, title bars, dragging, z-order, buttons, labels, text boxes, taskbar, event dispatch
 - M6 (DONE): Apps: calculator, text editor (Notepad-like), mini spreadsheet (Excel-like), clock (apps run as windows inside the kernel)
 - M7 (DONE): Processes & Scheduler: kernel tasks, 8 KB stacks, assembly context switch, preemptive round-robin scheduler (100 ms quantum), timed sleep queue, and zombie reaping
-- M8: Docs, report, demo video, viva prep
+- M8 (DONE): Docs, report, demo video script, presentation slides, viva defense guide (All Milestones M1-M8 Complete)
 (Optional if time remains: syscalls and user mode, ramdisk filesystem so editor can save files, 64-bit port).

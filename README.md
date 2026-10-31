@@ -32,7 +32,11 @@ myos/
 │   ├── milestone-4.md      # Milestone 4 report and viva Q&A
 │   ├── milestone-5.md      # Milestone 5 report and viva Q&A
 │   ├── milestone-6.md      # Milestone 6 report and viva Q&A
-│   └── milestone-7.md      # Milestone 7 report and viva Q&A
+│   ├── milestone-7.md      # Milestone 7 report and viva Q&A
+│   ├── FINAL_PROJECT_REPORT.md    # Comprehensive B.Tech Thesis Project Report
+│   ├── VIVA_PREPARATION_GUIDE.md  # 40-Question Master Viva Defense Guide
+│   ├── DEMO_VIDEO_SCRIPT.md       # 7-Minute Screen Recording Video Storyboard
+│   └── PRESENTATION_SLIDES.md     # 15-Slide Final Project Defense Presentation Deck
 ├── include/                # Header files
 │   ├── proc/               # Processes & Scheduler (Milestone 7)
 │   │   ├── task.h          # Task Control Block (TCB), states & task API

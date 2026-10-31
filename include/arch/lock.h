@@ -110,3 +110,4 @@ static inline bool irq_is_enabled(void) {
 }
 
 #endif /* ARCH_LOCK_H */
+

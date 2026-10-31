@@ -197,3 +197,4 @@ If a task called `kfree(task->stack_base)` while executing `task_exit()`, it wou
 ### Q5: Why must `pic_send_eoi` be issued before calling `schedule()` during timer preemption?
 **Answer**:
 The 8259 Programmable Interrupt Controller (PIC) sets an In-Service Register (ISR) bit when it delivers an interrupt and ignores subsequent interrupts on that line until an End-of-Interrupt (EOI) command is received. If a task switch occurred before sending EOI, the PIC would remain blocked. Other tasks would run with IRQ0 blocked, preventing future timer ticks and permanently halting preemption. Sending EOI before switching context keeps the PIC receptive to future hardware interrupts.
+
