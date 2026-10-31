@@ -336,6 +336,31 @@ Milestone 7 transitions the operating system from a single-threaded kernel loop 
    [ ZOMBIE ] ---> scheduler_cleanup_zombies() ---> [ Memory Freed ]
 ```
 
+---
+
+## 9. Virtual File System (VFS) & Storage Architecture (Milestone 9)
+
+```text
++-----------------------------------------------------------------------------------+
+|  Virtual File System (fs/vfs.c, include/fs/vfs.h):                                |
+|    - Uniform POSIX-like abstraction: vfs_node_t, vfs_dirent_t, vfs_file_t        |
+|    - Open File Table: 32 concurrent file descriptors                              |
+|    - Standard API: vfs_open(), vfs_read(), vfs_write(), vfs_close(), vfs_lookup() |
++-----------------------------------------------------------------------------------+
+|  In-Memory RamFS Driver (fs/ramfs.c, include/fs/ramfs.h):                         |
+|    - Hierarchical root directory mounted at '/'                                   |
+|    - Pre-seeded files: welcome.txt, readme.txt, system.nfo, todo.txt              |
+|    - Dynamic buffer expansion via kmalloc on file writes                          |
++-----------------------------------------------------------------------------------+
+|  System Applications & Desktop Integration:                                        |
+|    - File Explorer (apps/explorer.c): Browse, create, delete, and open files      |
+|    - Task Manager (apps/taskmgr.c): Live task metrics, memory bar, task_kill()    |
+|    - Terminal Emulator (apps/terminal.c): Interactive CLI shell & commands        |
+|    - Text Editor (apps/editor.c): VFS file save and load integration              |
++-----------------------------------------------------------------------------------+
+```
+
+
 
 
 

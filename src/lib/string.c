@@ -134,3 +134,58 @@ int strcmp(const char* s1, const char* s2) {
     }
     return *(const unsigned char*)s1 - *(const unsigned char*)s2;
 }
+
+/*
+ * strncmp:
+ * Compares at most count characters of two strings s1 and s2.
+ */
+int strncmp(const char* s1, const char* s2, size_t count) {
+    if (!s1 && !s2) return 0;
+    if (!s1) return -1;
+    if (!s2) return 1;
+
+    for (size_t i = 0; i < count; i++) {
+        if (s1[i] != s2[i]) {
+            return (int)(unsigned char)s1[i] - (int)(unsigned char)s2[i];
+        }
+        if (s1[i] == '\0') {
+            break;
+        }
+    }
+    return 0;
+}
+
+/*
+ * strcat:
+ * Appends the src string to the dest string, overwriting the terminating null byte
+ * and then adds a terminating null byte.
+ */
+char* strcat(char* dest, const char* src) {
+    if (!dest || !src) return dest;
+    char* d = dest;
+    while (*d != '\0') {
+        d++;
+    }
+    while ((*d++ = *src++) != '\0') {}
+    return dest;
+}
+
+/*
+ * strncat:
+ * Appends at most count characters from src to dest.
+ */
+char* strncat(char* dest, const char* src, size_t count) {
+    if (!dest || !src || count == 0) return dest;
+    char* d = dest;
+    while (*d != '\0') {
+        d++;
+    }
+    size_t i = 0;
+    while (i < count && *src != '\0') {
+        *d++ = *src++;
+        i++;
+    }
+    *d = '\0';
+    return dest;
+}
+

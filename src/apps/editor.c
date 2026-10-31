@@ -1,9 +1,11 @@
 #include "apps/editor.h"
+#include "fs/vfs.h"
 #include "gui/window.h"
 #include "gui/widget.h"
 #include "gui/wm.h"
 #include "gfx/font.h"
 #include "drivers/serial.h"
+#include "mm/heap.h"
 #include "lib/string.h"
 #include "lib/kprintf.h"
 
@@ -20,6 +22,7 @@
 /* Text Editor State */
 static window_t* s_editor_win = NULL;
 static widget_t* s_lbl_status = NULL;
+static char      s_current_filepath[64] = "/untitled.txt";
 
 static char s_lines[EDITOR_MAX_LINES][EDITOR_MAX_COLS];
 static int  s_line_lens[EDITOR_MAX_LINES];
@@ -275,7 +278,45 @@ static void editor_clear_all(void) {
 static void on_btn_new(widget_t* w, void* data) {
     (void)w; (void)data;
     editor_clear_all();
+    strcpy(s_current_filepath, "/untitled.txt");
+    if (s_editor_win) {
+        strcpy(s_editor_win->title, "Text Editor - Untitled");
+    }
     redraw_editor_canvas();
+}
+
+/* Callback: Save Document to VFS */
+static void on_btn_save(widget_t* w, void* data) {
+    (void)w; (void)data;
+
+    int fd = vfs_open(s_current_filepath, 0x02);
+    if (fd < 0) {
+        if (s_lbl_status) {
+            widget_set_text(s_lbl_status, "Error: Failed to open file for saving!");
+        }
+        return;
+    }
+
+    /* Write lines separated by newlines */
+    for (int i = 0; i < s_num_lines; i++) {
+        if (s_line_lens[i] > 0) {
+            vfs_write(fd, s_lines[i], (uint32_t)s_line_lens[i]);
+        }
+        if (i < s_num_lines - 1) {
+            vfs_write(fd, "\n", 1);
+        }
+    }
+    vfs_close(fd);
+
+    char stat[80];
+    strcpy(stat, "Saved successfully to ");
+    strcat(stat, s_current_filepath);
+    if (s_lbl_status) {
+        widget_set_text(s_lbl_status, stat);
+    }
+    serial_writestring("[EDITOR] Document saved to VFS: ");
+    serial_writestring(s_current_filepath);
+    serial_writestring("\n");
 }
 
 /* Callback: Load Sample Document */
@@ -292,6 +333,7 @@ static void on_btn_sample(widget_t* w, void* data) {
         "3. Enter key line splitting and backspace join",
         "4. Status bar with real-time char metrics",
         "5. Clean integration with Z-order compositor",
+        "6. Direct VFS save and load integration!",
         "",
         "Built from scratch in freestanding C!",
         "Type anything here to test..."
@@ -334,8 +376,9 @@ void app_editor_open(void) {
     s_editor_win->on_key   = on_editor_key;
 
     /* 1. Toolbar Buttons */
-    widget_add_to_window(s_editor_win, widget_create_button(10, 6, 80, 26, "New", on_btn_new, NULL));
-    widget_add_to_window(s_editor_win, widget_create_button(96, 6, 90, 26, "Sample", on_btn_sample, NULL));
+    widget_add_to_window(s_editor_win, widget_create_button(10, 6, 75, 26, "New", on_btn_new, NULL));
+    widget_add_to_window(s_editor_win, widget_create_button(92, 6, 75, 26, "Save", on_btn_save, NULL));
+    widget_add_to_window(s_editor_win, widget_create_button(174, 6, 85, 26, "Sample", on_btn_sample, NULL));
 
     /* 2. Status Bar Label at bottom */
     s_lbl_status = widget_create_label(14, 316, 490, 18, "Ln 1, Col 1 | Lines: 1 | Chars: 0", 0x00303030);
@@ -349,4 +392,75 @@ void app_editor_open(void) {
     wm_add_window(s_editor_win);
 
     serial_writestring("[EDITOR] Text Editor window opened.\n");
+}
+
+/*
+ * app_editor_open_file:
+ * Opens the text editor and loads a document from VFS.
+ */
+void app_editor_open_file(const char* filepath) {
+    app_editor_open();
+    if (!s_editor_win || !filepath) return;
+
+    editor_clear_all();
+    strncpy(s_current_filepath, filepath, sizeof(s_current_filepath) - 1);
+
+    /* Update title */
+    char title_buf[WINDOW_TITLE_MAX];
+    strcpy(title_buf, "Editor - ");
+    const char* base = filepath;
+    for (const char* p = filepath; *p; p++) {
+        if (*p == '/') base = p + 1;
+    }
+    strncat(title_buf, base, WINDOW_TITLE_MAX - 10);
+    strncpy(s_editor_win->title, title_buf, WINDOW_TITLE_MAX - 1);
+
+    int fd = vfs_open(filepath, 0x01);
+    if (fd < 0) {
+        if (s_lbl_status) {
+            widget_set_text(s_lbl_status, "Could not open file");
+        }
+        redraw_editor_canvas();
+        return;
+    }
+
+    uint32_t fsize = vfs_tell_size(fd);
+    if (fsize > 0) {
+        char* raw_buf = (char*)kmalloc(fsize + 1);
+        if (raw_buf) {
+            int n = vfs_read(fd, raw_buf, fsize);
+            if (n >= 0) raw_buf[n] = '\0';
+
+            /* Parse buffer line by line */
+            int line = 0;
+            int col = 0;
+            for (int i = 0; i < n && line < EDITOR_MAX_LINES; i++) {
+                char ch = raw_buf[i];
+                if (ch == '\r') continue;
+                if (ch == '\n') {
+                    s_lines[line][col] = '\0';
+                    s_line_lens[line] = col;
+                    line++;
+                    col = 0;
+                } else {
+                    if (col < EDITOR_MAX_COLS - 1) {
+                        s_lines[line][col++] = ch;
+                    }
+                }
+            }
+            if (col > 0 && line < EDITOR_MAX_LINES) {
+                s_lines[line][col] = '\0';
+                s_line_lens[line] = col;
+                line++;
+            }
+            s_num_lines = (line > 0) ? line : 1;
+            kfree(raw_buf);
+        }
+    }
+    vfs_close(fd);
+
+    s_cursor_row = 0;
+    s_cursor_col = 0;
+    redraw_editor_canvas();
+    update_status_bar();
 }

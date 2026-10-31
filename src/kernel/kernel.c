@@ -12,6 +12,11 @@
 #include "gfx/fb_console.h"
 #include "gfx/paint_demo.h"
 #include "gui/desktop.h"
+#include "fs/vfs.h"
+#include "fs/ramfs.h"
+#include "apps/taskmgr.h"
+#include "apps/explorer.h"
+#include "apps/terminal.h"
 #include "drivers/vga.h"
 #include "drivers/serial.h"
 #include "drivers/timer.h"
@@ -502,7 +507,7 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     /* Welcome Banner */
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
     kprintf("================================================================\n");
-    kprintf("  MyOS - 32-bit x86 Kernel (Milestone 7: Processes & Scheduler) \n");
+    kprintf("  MyOS - 32-bit x86 Kernel (Milestone 9: VFS, RamFS, Desktop Apps) \n");
     kprintf("================================================================\n");
 
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
@@ -565,6 +570,11 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     /* Step 14: Dynamic Kernel Heap */
     heap_init();
     kprintf("[OK] Dynamic kernel heap initialized at virtual %p\n", (void*)HEAP_START_ADDR);
+
+    /* Step 14b: Virtual File System & In-Memory RamFS */
+    vfs_init();
+    ramfs_init();
+    kprintf("[OK] Virtual File System & RamFS mounted at '/'\n");
 
     /* Step 15: Multitasking & Preemptive Round-Robin Scheduler */
     task_init();

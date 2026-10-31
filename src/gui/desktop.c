@@ -3,6 +3,9 @@
 #include "gui/widget.h"
 #include "apps/launcher.h"
 #include "apps/clock.h"
+#include "apps/explorer.h"
+#include "apps/taskmgr.h"
+#include "apps/terminal.h"
 #include "gfx/gfx.h"
 #include "gfx/cursor.h"
 #include "gfx/fb_console.h"
@@ -314,14 +317,24 @@ void desktop_run(void) {
                 serial_writestring("[DESKTOP] ESC pressed. Exiting desktop to console...\n");
                 break;
             }
+            if ((unsigned char)c == KEY_F8) {
+                serial_writestring("[DESKTOP] F8 pressed: Opening File Explorer...\n");
+                app_explorer_open();
+                continue;
+            }
+            if ((unsigned char)c == KEY_F9) {
+                serial_writestring("[DESKTOP] F9 pressed: Opening Terminal...\n");
+                app_terminal_open();
+                continue;
+            }
             if ((unsigned char)c == KEY_F11) {
                 serial_writestring("[DESKTOP] F11 pressed: Spawning background worker task...\n");
                 spawn_compute_task();
                 continue;
             }
             if ((unsigned char)c == KEY_F12) {
-                serial_writestring("[DESKTOP] F12 pressed: Dumping task list...\n");
-                scheduler_dump_tasks();
+                serial_writestring("[DESKTOP] F12 pressed: Opening Task Manager...\n");
+                app_taskmgr_open();
                 continue;
             }
             /* Dispatch keystroke to focused window / text box */

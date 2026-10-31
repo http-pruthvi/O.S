@@ -3,6 +3,9 @@
 #include "apps/editor.h"
 #include "apps/sheet.h"
 #include "apps/clock.h"
+#include "apps/taskmgr.h"
+#include "apps/explorer.h"
+#include "apps/terminal.h"
 #include "gui/wm.h"
 #include "gui/window.h"
 #include "gui/widget.h"
@@ -20,6 +23,9 @@ extern void app_calc_open(void);
 extern void app_editor_open(void);
 extern void app_sheet_open(void);
 extern void app_clock_open(void);
+extern void app_taskmgr_open(void);
+extern void app_explorer_open(void);
+extern void app_terminal_open(void);
 extern void paint_demo_run(void);
 
 /* Launcher State */
@@ -208,22 +214,27 @@ static void on_action_paint(void) {
 
 /* Desktop Icon Definitions */
 static desktop_icon_t s_desktop_icons[] = {
-    { 24,  24, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "Calculator", launcher_launch_calc   },
-    { 24, 110, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "Editor",     launcher_launch_editor },
-    { 24, 196, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "Sheets",     launcher_launch_sheet  },
-    { 24, 282, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "Clock",      launcher_launch_clock  },
-    { 24, 368, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "SysMon",     launcher_launch_sysmon },
-    { 24, 454, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "About",      launcher_launch_about  }
+    {  24,  24, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "Calculator", launcher_launch_calc   },
+    {  24, 110, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "Editor",     launcher_launch_editor },
+    {  24, 196, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "Sheets",     launcher_launch_sheet  },
+    {  24, 282, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "Clock",      launcher_launch_clock  },
+    {  24, 368, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "TaskMgr",    app_taskmgr_open       },
+    {  24, 454, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "About",      launcher_launch_about  },
+    { 114,  24, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "Explorer",   app_explorer_open      },
+    { 114, 110, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "Terminal",   app_terminal_open      },
+    { 114, 196, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "SysMon",     launcher_launch_sysmon }
 };
 #define NUM_DESKTOP_ICONS (int)(sizeof(s_desktop_icons) / sizeof(s_desktop_icons[0]))
 
 /* Start Menu Item Definitions */
 static menu_item_t s_menu_items[] = {
-    { "Calculator",       launcher_launch_calc,   false },
+    { "File Explorer",    app_explorer_open,      false },
+    { "Task Manager",     app_taskmgr_open,       false },
+    { "Terminal CLI",     app_terminal_open,      false },
     { "Text Editor",      launcher_launch_editor, false },
+    { "Calculator",       launcher_launch_calc,   false },
     { "Spreadsheet",      launcher_launch_sheet,  false },
     { "Clock & Calendar", launcher_launch_clock,  false },
-    { "System Monitor",   launcher_launch_sysmon, false },
     { "Paint Demo",       on_action_paint,        true  }, /* Separator line after */
     { "Shutdown (Exit)",  on_action_exit,         false }
 };
@@ -321,7 +332,40 @@ static void draw_icon_graphic(int icon_idx, int cx, int cy) {
             gfx_draw_line(cx, cy, cx - 6, cy + 6, 0x00FF8040);
             break;
 
-        case 4: /* System Monitor: monitor chassis with waveform */
+        case 4: /* Task Manager: Process activity chart */
+            gfx_fill_rect(cx - 16, cy - 14, 32, 28, 0x001B365D);
+            gfx_draw_rect(cx - 16, cy - 14, 32, 28, 0x00A0B0C0);
+            /* Activity bars */
+            gfx_fill_rect(cx - 12, cy + 2, 5, 8, 0x0000FF66);
+            gfx_fill_rect(cx - 5, cy - 4, 5, 14, 0x0000FF66);
+            gfx_fill_rect(cx + 2, cy - 8, 5, 18, 0x0000FF66);
+            gfx_fill_rect(cx + 9, cy - 1, 5, 11, 0x0000FF66);
+            break;
+
+        case 5: /* About: blue circle badge with 'i' */
+            gfx_fill_rect(cx - 15, cy - 15, 30, 30, 0x002060B0);
+            gfx_draw_rect(cx - 15, cy - 15, 30, 30, 0x00FFFFFF);
+            /* Letter 'i' */
+            gfx_fill_rect(cx - 2, cy - 10, 4, 4, 0x00FFFFFF);
+            gfx_fill_rect(cx - 2, cy - 3,  4, 11, 0x00FFFFFF);
+            break;
+
+        case 6: /* File Explorer: Manila Folder */
+            gfx_fill_rect(cx - 16, cy - 14, 14, 6, 0x00D49B00); /* Tab */
+            gfx_fill_rect(cx - 16, cy - 9, 32, 24, 0x00F5BA13);  /* Folder body */
+            gfx_draw_rect(cx - 16, cy - 9, 32, 24, 0x00A06D00);
+            /* Paper preview */
+            gfx_fill_rect(cx - 10, cy - 12, 16, 5, 0x00FFFFFF);
+            break;
+
+        case 7: /* Terminal: Console box with prompt symbol */
+            gfx_fill_rect(cx - 16, cy - 14, 32, 28, 0x000F141C);
+            gfx_draw_rect(cx - 16, cy - 14, 32, 28, 0x0000FF99);
+            gfx_draw_char(cx - 10, cy - 8, '>', 0x0000FF99, 0x000F141C, false);
+            gfx_fill_rect(cx + 1, cy + 4, 6, 2, 0x0000FF99);
+            break;
+
+        case 8: /* System Monitor: monitor chassis with waveform */
             gfx_fill_rect(cx - 16, cy - 16, 32, 24, 0x002A303C);
             gfx_draw_rect(cx - 16, cy - 16, 32, 24, 0x00D0D8E0);
             /* Screen */
@@ -335,14 +379,6 @@ static void draw_icon_graphic(int icon_idx, int cx, int cy) {
             /* Stand */
             gfx_fill_rect(cx - 4, cy + 8, 8, 4, 0x00506070);
             gfx_fill_rect(cx - 8, cy + 12, 16, 2, 0x00506070);
-            break;
-
-        case 5: /* About: blue circle badge with 'i' */
-            gfx_fill_rect(cx - 15, cy - 15, 30, 30, 0x002060B0);
-            gfx_draw_rect(cx - 15, cy - 15, 30, 30, 0x00FFFFFF);
-            /* Letter 'i' */
-            gfx_fill_rect(cx - 2, cy - 10, 4, 4, 0x00FFFFFF);
-            gfx_fill_rect(cx - 2, cy - 3,  4, 11, 0x00FFFFFF);
             break;
 
         default:

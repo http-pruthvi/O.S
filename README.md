@@ -33,6 +33,7 @@ myos/
 │   ├── milestone-5.md      # Milestone 5 report and viva Q&A
 │   ├── milestone-6.md      # Milestone 6 report and viva Q&A
 │   ├── milestone-7.md      # Milestone 7 report and viva Q&A
+│   ├── milestone-9.md      # Milestone 9 VFS, RamFS, Task Manager, File Explorer & Terminal
 │   ├── FINAL_PROJECT_REPORT.md    # Comprehensive B.Tech Thesis Project Report
 │   ├── VIVA_PREPARATION_GUIDE.md  # 40-Question Master Viva Defense Guide
 │   ├── DEMO_VIDEO_SCRIPT.md       # 7-Minute Screen Recording Video Storyboard
@@ -60,6 +61,9 @@ myos/
 │   │   ├── timer.h         # PIT 8254 timer driver (100 Hz, uptime)
 │   │   ├── keyboard.h      # PS/2 keyboard driver (Scancode Set 1)
 │   │   └── mouse.h         # PS/2 mouse driver (IRQ 12, packet parser)
+│   ├── fs/                 # Storage & Virtual File System (Milestone 9)
+│   │   ├── vfs.h           # VFS node structures, file descriptor table & API
+│   │   └── ramfs.h         # In-memory RAM filesystem driver interface
 │   ├── gui/                # Window Manager & Widgets (Milestone 5)
 │   │   ├── window.h        # Window structures, title bars & client canvas
 │   │   ├── wm.h            # Z-order compositor, taskbar & dragging

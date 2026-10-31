@@ -83,6 +83,12 @@ task_t* task_get_all(void);
 /* Unlinks a task from the global active tasks list and decrements count */
 void task_unlink(task_t* task);
 
+/* Returns pointer to task with matching PID, or NULL if not found */
+task_t* task_by_id(uint32_t pid);
+
+/* Terminates a task by PID (PID 0 and 1 are protected) */
+bool task_kill(uint32_t pid);
+
 /* Returns the total number of tasks in the system */
 uint32_t task_get_count(void);
 

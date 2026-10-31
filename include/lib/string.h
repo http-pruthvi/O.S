@@ -33,4 +33,13 @@ char* strncpy(char* dest, const char* src, size_t count);
 /* Compares two null-terminated strings */
 int strcmp(const char* s1, const char* s2);
 
+/* Compares at most count characters of two strings */
+int strncmp(const char* s1, const char* s2, size_t count);
+
+/* Appends src string to dest string */
+char* strcat(char* dest, const char* src);
+
+/* Appends at most count characters of src to dest */
+char* strncat(char* dest, const char* src, size_t count);
+
 #endif /* LIB_STRING_H */

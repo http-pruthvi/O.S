@@ -322,3 +322,66 @@ void task_unlink(task_t* task) {
 uint32_t task_get_count(void) {
     return total_tasks;
 }
+
+/*
+ * task_by_id:
+ * Searches for an active task by PID.
+ */
+task_t* task_by_id(uint32_t pid) {
+    uint32_t flags = irq_save();
+    task_t* curr = all_tasks_head;
+    while (curr) {
+        if (curr->id == pid) {
+            irq_restore(flags);
+            return curr;
+        }
+        curr = curr->all_next;
+    }
+    irq_restore(flags);
+    return NULL;
+}
+
+/*
+ * task_kill:
+ * Terminates a task by PID. Protected system tasks (PID 0 and 1) cannot be killed.
+ */
+bool task_kill(uint32_t pid) {
+    if (pid == 0 || pid == 1) {
+        kprintf("[TASK] Warning: Cannot kill protected system task %u!\n", pid);
+        return false;
+    }
+
+    uint32_t flags = irq_save();
+    task_t* target = NULL;
+    task_t* curr = all_tasks_head;
+    while (curr) {
+        if (curr->id == pid) {
+            target = curr;
+            break;
+        }
+        curr = curr->all_next;
+    }
+
+    if (!target) {
+        irq_restore(flags);
+        return false;
+    }
+
+    /* Remove from ready queue if pending */
+    if (target->state == TASK_READY) {
+        scheduler_remove_ready(target);
+    }
+
+    target->state = TASK_ZOMBIE;
+    kprintf("[TASK] Task %u ('%s') terminated\n", target->id, target->name);
+
+    if (target == current_task) {
+        irq_restore(flags);
+        schedule();
+        return true;
+    }
+
+    irq_restore(flags);
+    return true;
+}
+
