@@ -416,12 +416,12 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     /* Welcome Banner */
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
     kprintf("================================================================\n");
-    kprintf("     MyOS - 32-bit x86 Kernel (Milestone 4: GUI Foundation)     \n");
+    kprintf("  MyOS - 32-bit x86 Kernel (Milestone 5: Window Manager/Widgets)\n");
     kprintf("================================================================\n");
 
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
     kprintf("[OK] Serial COM1 initialized (115200 8N1)\n");
-    if (!fb_is_active()) {
+    if (!fb_get_info()->is_available) {
         kprintf("[OK] VGA text mode initialized (80x25 at 0xB8000)\n");
     }
 
