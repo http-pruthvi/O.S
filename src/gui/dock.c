@@ -6,9 +6,13 @@
 #include "apps/editor.h"
 #include "apps/calc.h"
 #include "apps/sheet.h"
+#include "apps/settings.h"
+#include "apps/photos.h"
+#include "apps/player.h"
+#include "apps/breakout.h"
 #include "apps/minesweeper.h"
 #include "apps/snake.h"
-#include "apps/control.h"
+#include "apps/taskmgr.h"
 #include "gfx/gfx.h"
 #include "gfx/font.h"
 
@@ -18,14 +22,18 @@ typedef struct {
 } dock_item_t;
 
 static const dock_item_t s_dock_items[] = {
-    { "Term",    app_terminal_open    },
-    { "Files",   app_explorer_open    },
-    { "Editor",  app_editor_open      },
-    { "Calc",    app_calc_open        },
-    { "Sheets",  app_sheet_open       },
-    { "Mines",   app_minesweeper_open },
-    { "Snake",   app_snake_open       },
-    { "Control", app_control_open     }
+    { "Term",     app_terminal_open    },
+    { "Files",    app_explorer_open    },
+    { "Editor",   app_editor_open      },
+    { "Calc",     app_calc_open        },
+    { "Sheets",   app_sheet_open       },
+    { "Settings", app_settings_open    },
+    { "Photos",   app_photos_open      },
+    { "Music",    app_player_open      },
+    { "Breakout", app_breakout_open    },
+    { "Mines",    app_minesweeper_open },
+    { "Snake",    app_snake_open       },
+    { "Tasks",    app_taskmgr_open     }
 };
 #define NUM_DOCK_ITEMS (int)(sizeof(s_dock_items) / sizeof(s_dock_items[0]))
 
@@ -76,7 +84,44 @@ static void draw_dock_icon_glyph(int idx, int cx, int cy) {
             gfx_draw_line(cx, cy - 5, cx, cy + 11, 0x00A0C0A0);
             break;
 
-        case 5: /* Minesweeper */
+        case 5: /* System Settings */
+            gfx_fill_rect(cx - 11, cy - 11, 22, 22, 0x00313244);
+            gfx_draw_rect(cx - 11, cy - 11, 22, 22, 0x00CBA6F7);
+            gfx_fill_rect(cx - 7, cy - 4, 14, 2, 0x00181825);
+            gfx_fill_rect(cx - 7, cy + 4, 14, 2, 0x00181825);
+            gfx_fill_rect(cx - 3, cy - 6, 4, 6, 0x0089B4FA);
+            gfx_fill_rect(cx + 1, cy + 2, 4, 6, 0x00CBA6F7);
+            break;
+
+        case 6: /* Photos Viewer */
+            gfx_fill_rect(cx - 11, cy - 10, 22, 20, 0x002B303C);
+            gfx_draw_rect(cx - 11, cy - 10, 22, 20, 0x0089DCEB);
+            gfx_fill_rect(cx - 7, cy - 6, 4, 4, 0x00F9E2AF); /* Sun */
+            gfx_fill_rect(cx - 8, cy + 2, 10, 6, 0x00A6E3A1); /* Mountain 1 */
+            gfx_fill_rect(cx - 1, cy - 1, 9, 9, 0x0094E2D5);  /* Mountain 2 */
+            break;
+
+        case 7: /* Music / Media Player */
+            gfx_fill_rect(cx - 11, cy - 11, 22, 22, 0x00181825);
+            gfx_draw_rect(cx - 11, cy - 11, 22, 22, 0x00F5C2E7);
+            /* Equalizer bar mini glyphs */
+            gfx_fill_rect(cx - 7, cy - 4, 3, 12, 0x00A6E3A1);
+            gfx_fill_rect(cx - 2, cy - 8, 3, 16, 0x00F9E2AF);
+            gfx_fill_rect(cx + 3, cy - 1, 3, 9, 0x00F38BA8);
+            break;
+
+        case 8: /* Breakout Arcade */
+            gfx_fill_rect(cx - 11, cy - 11, 22, 22, 0x000F121C);
+            gfx_draw_rect(cx - 11, cy - 11, 22, 22, 0x00FAB387);
+            gfx_fill_rect(cx - 8, cy - 8, 5, 2, 0x00F38BA8); /* Red brick */
+            gfx_fill_rect(cx - 1, cy - 8, 5, 2, 0x00FAB387); /* Orange */
+            gfx_fill_rect(cx - 8, cy - 4, 5, 2, 0x00A6E3A1); /* Green */
+            gfx_fill_rect(cx - 1, cy - 4, 5, 2, 0x00F9E2AF); /* Yellow */
+            gfx_fill_rect(cx - 6, cy + 6, 12, 3, 0x0089B4FA); /* Paddle */
+            gfx_fill_rect(cx + 1, cy + 1, 2, 2, 0x00FFFFFF); /* Ball */
+            break;
+
+        case 9: /* Minesweeper */
             gfx_fill_rect(cx - 11, cy - 11, 22, 22, 0x00C0C0C0);
             gfx_draw_rect(cx - 11, cy - 11, 22, 22, 0x00707070);
             gfx_fill_rect(cx - 4, cy - 4, 8, 8, 0x0011111B);
@@ -85,7 +130,7 @@ static void draw_dock_icon_glyph(int idx, int cx, int cy) {
             gfx_fill_rect(cx - 2, cy - 2, 2, 2, 0x00FFFFFF);
             break;
 
-        case 6: /* Snake */
+        case 10: /* Snake */
             gfx_fill_rect(cx - 11, cy - 11, 22, 22, 0x00182818);
             gfx_draw_rect(cx - 11, cy - 11, 22, 22, 0x00336633);
             gfx_fill_rect(cx - 7, cy - 5, 6, 6, 0x00A6E3A1);
@@ -94,13 +139,13 @@ static void draw_dock_icon_glyph(int idx, int cx, int cy) {
             gfx_fill_rect(cx + 3, cy - 4, 4, 4, 0x00F38BA8);
             break;
 
-        case 7: /* Control Panel */
-            gfx_fill_rect(cx - 11, cy - 11, 22, 22, 0x00313244);
-            gfx_draw_rect(cx - 11, cy - 11, 22, 22, 0x00CBA6F7);
-            gfx_fill_rect(cx - 7, cy - 4, 14, 2, 0x00181825);
-            gfx_fill_rect(cx - 7, cy + 4, 14, 2, 0x00181825);
-            gfx_fill_rect(cx - 3, cy - 6, 4, 6, 0x0089B4FA);
-            gfx_fill_rect(cx + 1, cy + 2, 4, 6, 0x00CBA6F7);
+        case 11: /* Task Manager */
+            gfx_fill_rect(cx - 11, cy - 11, 22, 22, 0x0011111B);
+            gfx_draw_rect(cx - 11, cy - 11, 22, 22, 0x00F38BA8);
+            gfx_draw_line(cx - 8, cy + 4, cx - 4, cy - 3, 0x00A6E3A1);
+            gfx_draw_line(cx - 4, cy - 3, cx, cy + 2, 0x00A6E3A1);
+            gfx_draw_line(cx, cy + 2, cx + 4, cy - 6, 0x00A6E3A1);
+            gfx_draw_line(cx + 4, cy - 6, cx + 8, cy + 4, 0x00A6E3A1);
             break;
 
         default:
@@ -148,8 +193,8 @@ void dock_render(int clip_x, int clip_y, int clip_w, int clip_h) {
     gfx_draw_line(dx + dw - 1, dy + dh - 7, dx + dw - 7, dy + dh - 1, dock_border);
 
     /* 3. Render App Icons */
-    int item_spacing = 54;
-    int start_x = dx + 24;
+    int item_spacing = 48;
+    int start_x = dx + 26;
 
     for (int i = 0; i < NUM_DOCK_ITEMS; i++) {
         int icon_cx = start_x + i * item_spacing;
@@ -178,12 +223,12 @@ bool dock_handle_mouse(int mx, int my, bool left_pressed) {
         return false;
     }
 
-    int item_spacing = 54;
-    int start_x = dx + 24;
+    int item_spacing = 48;
+    int start_x = dx + 26;
 
     for (int i = 0; i < NUM_DOCK_ITEMS; i++) {
         int icon_cx = start_x + i * item_spacing;
-        if (mx >= icon_cx - 22 && mx <= icon_cx + 22) {
+        if (mx >= icon_cx - 20 && mx <= icon_cx + 20) {
             if (s_dock_items[i].launch_fn) {
                 s_dock_items[i].launch_fn();
             }

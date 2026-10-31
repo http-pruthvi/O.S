@@ -12,8 +12,14 @@
 #include "apps/taskmgr.h"
 #include "apps/terminal.h"
 #include "apps/control.h"
+#include "apps/settings.h"
 #include "apps/minesweeper.h"
 #include "apps/snake.h"
+#include "apps/photos.h"
+#include "apps/player.h"
+#include "apps/breakout.h"
+#include "gui/startmenu.h"
+#include "gui/notification.h"
 #include "gfx/gfx.h"
 #include "gfx/cursor.h"
 #include "gfx/fb_console.h"
@@ -295,6 +301,12 @@ void desktop_run(void) {
     /* Initialize Application Launcher */
     launcher_init();
 
+    /* Pre-seed sample PPM images into RamFS */
+    photos_preseed_images();
+
+    /* Push Welcome Toast Notification */
+    notification_push(NOTIFY_SUCCESS, "MyOS Desktop 2.0", "System ready. Click [ MyOS ] or press F1!");
+
     /* 2. Setup showcase windows and child widgets */
     setup_showcase_windows();
 
@@ -332,6 +344,27 @@ void desktop_run(void) {
                 continue;
             }
 
+            if ((unsigned char)c == KEY_F1) {
+                serial_writestring("[DESKTOP] F1 pressed: Toggling Start Menu...\n");
+                startmenu_toggle();
+                wm_redraw_all();
+                continue;
+            }
+            if ((unsigned char)c == KEY_F2) {
+                serial_writestring("[DESKTOP] F2 pressed: Opening Photos Viewer...\n");
+                app_photos_open();
+                continue;
+            }
+            if ((unsigned char)c == KEY_F3) {
+                serial_writestring("[DESKTOP] F3 pressed: Opening Media Player...\n");
+                app_player_open();
+                continue;
+            }
+            if ((unsigned char)c == KEY_F4) {
+                serial_writestring("[DESKTOP] F4 pressed: Opening Breakout Game...\n");
+                app_breakout_open();
+                continue;
+            }
             if ((unsigned char)c == KEY_F5) {
                 serial_writestring("[DESKTOP] F5 pressed: Toggling Conky HUD widgets...\n");
                 hud_toggle();
@@ -344,8 +377,8 @@ void desktop_run(void) {
                 continue;
             }
             if ((unsigned char)c == KEY_F7) {
-                serial_writestring("[DESKTOP] F7 pressed: Opening Control Panel...\n");
-                app_control_open();
+                serial_writestring("[DESKTOP] F7 pressed: Opening System Settings...\n");
+                app_settings_open();
                 continue;
             }
             if ((unsigned char)c == KEY_F8) {
@@ -373,6 +406,10 @@ void desktop_run(void) {
                 app_taskmgr_open();
                 continue;
             }
+
+            /* Forward raw keystrokes to Breakout if running */
+            breakout_handle_key((uint8_t)c);
+
             /* Dispatch keystroke to focused window / text box */
             wm_handle_keyboard(c);
         }
@@ -389,7 +426,21 @@ void desktop_run(void) {
             wm_handle_mouse(&ev, mx, my);
         }
 
-        /* C. Update Taskbar Clock & Clock App */
+        /* C. Update Periodic Timers & Ticks */
+        static uint32_t s_last_desktop_tick = 0;
+        uint32_t cur_tick = timer_get_ticks();
+        if (cur_tick != s_last_desktop_tick) {
+            uint32_t delta = cur_tick - s_last_desktop_tick;
+            s_last_desktop_tick = cur_tick;
+            if (delta > 5) delta = 5;
+            for (uint32_t i = 0; i < delta; i++) {
+                notification_tick();
+                player_tick();
+                breakout_tick();
+            }
+        }
+
+        /* D. Update Taskbar Clock & Clock App */
         if (timer_is_clock_dirty()) {
             wm_render_taskbar(WM_SCREEN_WIDTH - 120, WM_TASKBAR_Y, 120, WM_TASKBAR_HEIGHT);
             gfx_flush_rect(WM_SCREEN_WIDTH - 120, WM_TASKBAR_Y, 120, WM_TASKBAR_HEIGHT);

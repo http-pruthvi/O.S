@@ -4,6 +4,8 @@
 #include "gui/hud.h"
 #include "gui/waybar.h"
 #include "gui/dock.h"
+#include "gui/startmenu.h"
+#include "gui/notification.h"
 #include "gui/lockscreen.h"
 #include "apps/launcher.h"
 #include "gfx/gfx.h"
@@ -47,11 +49,13 @@ bool wm_init(void) {
     wm_drag_window = NULL;
     wm_prev_buttons = 0;
 
-    /* Initialize Theme, HUD, Waybar, Dock and Lock Screen */
+    /* Initialize Theme, HUD, Waybar, Dock, StartMenu, Notification and Lock Screen */
     theme_init();
     hud_init();
     waybar_init();
     dock_init();
+    startmenu_init();
+    notification_init();
     lockscreen_init();
 
     serial_writestring("[WM] Window Manager initialized successfully with Catppuccin Mocha theme.\n");
@@ -364,12 +368,20 @@ void wm_invalidate_rect(int x, int y, int w, int h) {
         wm_render_taskbar(x, y, w, h);
     }
 
-    /* 6. Composite Start Menu if open and intersecting dirty rect */
+    /* 6. Composite Modern Start Menu popup if open */
+    if (startmenu_is_open()) {
+        startmenu_render(backbuf, WM_SCREEN_WIDTH, WM_SCREEN_HEIGHT, theme_get_current());
+    }
+
+    /* 7. Composite Toast Notifications if active */
+    notification_render(backbuf, WM_SCREEN_WIDTH, WM_SCREEN_HEIGHT, theme_get_current());
+
+    /* 8. Composite Legacy Start Menu if open and intersecting dirty rect */
     if (launcher_is_start_menu_open()) {
         launcher_render_start_menu(x, y, w, h);
     }
 
-    /* 7. Composite Modal Lock Screen if active */
+    /* 9. Composite Modal Lock Screen if active */
     if (lockscreen_is_active()) {
         lockscreen_render();
     }
@@ -405,14 +417,32 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
 
     /* 1. Handle Left Click Down */
     if (left_pressed) {
+        /* Check Toast Notification click */
+        if (notification_handle_click(mx, my)) {
+            wm_redraw_all();
+            wm_prev_buttons = ev->buttons;
+            return;
+        }
+
+        /* Check Modern Start Menu click if open */
+        if (startmenu_is_open()) {
+            if (startmenu_handle_click(mx, my)) {
+                wm_redraw_all();
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+        }
+
         /* A. Check Top Waybar clicks */
         if (waybar_handle_mouse(mx, my, left_pressed)) {
+            wm_redraw_all();
             wm_prev_buttons = ev->buttons;
             return;
         }
 
         /* B. Check Bottom Floating Dock clicks */
         if (dock_handle_mouse(mx, my, left_pressed)) {
+            wm_redraw_all();
             wm_prev_buttons = ev->buttons;
             return;
         }

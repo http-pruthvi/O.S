@@ -14,7 +14,7 @@
  * - Shows active window indicators beneath running applications.
  */
 
-#define DOCK_WIDTH   460
+#define DOCK_WIDTH   620
 #define DOCK_HEIGHT  54
 #define DOCK_X       ((1024 - DOCK_WIDTH) / 2)
 #define DOCK_Y       706

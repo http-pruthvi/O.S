@@ -96,13 +96,29 @@ Terminating a task requires careful synchronization:
 | `include/lib/string.h` | **Updated** | Added `strcat`, `strncat`, `strncmp`, `strlcpy`, `strlcat` bounded string prototypes |
 | `src/lib/string.c` | **Updated** | Implemented `strcat`, `strncat`, `strncmp`, and OpenBSD-style `strlcpy`/`strlcat` |
 | `include/apps/control.h` | **Created** | Control Panel application interface with wallpaper themes and kernel security readout |
-| `src/apps/control.c` | **Created** | Control Panel GUI: theme buttons (Teal, Navy, Slate, Forest), security status, hardware specs |
+| `src/apps/control.c` | **Updated** | Forwards legacy `app_control_open` directly to modern System Settings |
+| `include/apps/settings.h` | **Created** | Modern 4-tab System Settings application interface (Display, Audio, Security, Power) |
+| `src/apps/settings.c` | **Created** | Tabbed settings center: 5 themes, HUD toggle, PC speaker audio test, RAM/heap/uptime telemetry |
+| `include/apps/photos.h` | **Created** | Photos & Image Viewer application interface |
+| `src/apps/photos.c` | **Created** | Image Viewer: Netpbm PPM (P3 ASCII/P6 binary) parser, filters (grayscale/invert), 1x-6x zoom |
+| `include/apps/player.h` | **Created** | Media Player & Chiptune Synthesizer interface |
+| `src/apps/player.c` | **Created** | Audio workstation: PIT Ch 2 speaker tone synthesis, 4 multi-octave chiptunes, 8-band animated spectrum visualizer |
+| `include/apps/breakout.h` | **Created** | Retro 8-bit Breakout / Brick Breaker arcade game interface |
+| `src/apps/breakout.c` | **Created** | Arcade game: sub-pixel fixed-point physics, segmented paddle deflection, 4-tier colored bricks, dual controls |
+| `include/gui/startmenu.h` | **Created** | Modern drop-down Start Menu / App Launcher popup interface |
+| `src/gui/startmenu.c` | **Created** | Start Menu: user profile card, search filter box, 12 app tiles, quick power actions (Lock/Reboot/Halt) |
+| `include/gui/notification.h` | **Created** | Desktop Toast Notification system interface |
+| `src/gui/notification.c` | **Created** | Non-blocking toast alerts with category badges, countdown progress bar, auto-dismiss, history |
+| `include/gui/dock.h` | **Updated** | Expanded floating dock width to 620 px for 12 productivity apps and arcade games |
+| `src/gui/dock.c` | **Updated** | Rendered custom mini-glyphs for all 12 apps with active instance pips |
+| `src/gui/waybar.c` | **Updated** | Added `[ MyOS ]` Start Menu trigger chip and wired Clock chip to Clock app |
+| `src/gui/wm.c` | **Updated** | Integrated modern Start Menu, toast notifications, and event hit testing |
 | `include/apps/minesweeper.h` | **Created** | Classic Windows Minesweeper game interface |
 | `src/apps/minesweeper.c` | **Created** | Minesweeper: 9x9 grid, 10 mines, 7-seg LED readouts, animated smiley, safe first-click, BFS flood fill |
 | `include/apps/snake.h` | **Created** | Retro Snake Arcade game interface |
 | `src/apps/snake.c` | **Created** | Snake Arcade: 20x20 grid, WASD/arrows, food apple, high score, zero warning build |
 | `src/apps/calc.c` | **Updated** | Upgraded to 5-column Scientific Calculator (sqrt, x^2, 1/x, %, DEL) |
-| `src/gui/desktop.c` | **Updated** | Added shortcut hooks `[F7]` (Control Panel), `[F8]` (Explorer), `[F9]` (Terminal), `[F10]` (Minesweeper), `[F12]` (Task Manager) |
+| `src/gui/desktop.c` | **Updated** | Preseeded PPM images, initialized notifications, wired F1-F12 hotkeys and periodic ticks |
 | `src/kernel/kernel.c` | **Updated** | Initialized VFS and RamFS during boot sequence; updated banner to Milestone 9 |
 
 ---

@@ -103,10 +103,23 @@ myos/
 └── src/                    # Implementation source code
     ├── apps/
     │   ├── launcher.c      # Desktop shortcut icons & Start menu popup
-    │   ├── calc.c          # Calculator UI & 32-bit arithmetic engine
-    │   ├── editor.c        # Multi-line text buffer, caret & status bar
+    │   ├── calc.c          # 5-column Scientific Calculator & 32-bit arithmetic
+    │   ├── editor.c        # Multi-line text buffer, caret, status bar & VFS save/load
     │   ├── sheet.c         # 6x10 spreadsheet, formula parser (=SUM, =AVG)
-    │   └── clock.c         # Digital clock, uptime & Sakamoto calendar
+    │   ├── clock.c         # Digital clock, uptime & Sakamoto calendar
+    │   ├── explorer.c      # Graphical File Explorer (browse, create, delete, open in editor)
+    │   ├── taskmgr.c       # Graphical Task Manager (process list, memory stats, task_kill)
+    │   ├── terminal.c      # Desktop Terminal CLI Shell (ls, cat, write, rm, ps, kill, etc.)
+    │   ├── settings.c      # Modern 4-Tab System Settings (Themes, Audio, Security, Power)
+    │   ├── control.c       # Legacy Control Panel entry point forwarded to Settings
+    │   ├── photos.c        # Photos / Image Viewer (PPM P3/P6, Grayscale, Invert, 1x-6x Zoom)
+    │   ├── player.c        # Media Player & Chiptune Synthesizer (PIT Ch2, 4 tracks, animated EQ)
+    │   ├── breakout.c      # Retro 8-bit Breakout Arcade (fixed-point physics, paddle deflection)
+    │   ├── minesweeper.c   # Classic Minesweeper (9x9 grid, 10 mines, 7-seg LED, smiley, BFS)
+    │   └── snake.c         # Retro Snake Arcade (20x20 grid, WASD/arrows, food apple, high score)
+    ├── fs/
+    │   ├── vfs.c           # Virtual File System abstraction & 32 file descriptors
+    │   └── ramfs.c         # In-memory RAM filesystem driver with dynamic reallocation
     ├── proc/
     │   ├── task.c          # Task lifecycle, 8 KB stack forging, idle & boot tasks
     │   ├── scheduler.c     # Preemptive round-robin, sleeping queue & zombie reaper
@@ -141,17 +154,19 @@ myos/
     │   ├── window.c        # Window rendering, frame, title bar & client canvas
     │   ├── wm.c            # Z-order compositor, compositing pipeline & hit test
     │   ├── widget.c        # 3D relief buttons, labels & text boxes
-    │   ├── desktop.c       # Desktop environment & hotkey dispatcher ([F5], [F6], [F7])
+    │   ├── desktop.c       # Desktop environment & hotkey dispatcher ([F1]-[F12])
     │   ├── theme.c         # Dynamic 5-palette theme engine
-    │   ├── waybar.c        # Top status bar with workspaces, chips & clock
-    │   ├── dock.c          # Centered floating pill dock with active pips
+    │   ├── waybar.c        # Top status bar with [MyOS] launcher chip, chips & clock
+    │   ├── dock.c          # Centered floating 12-icon pill dock with active pips
     │   ├── hud.c           # Conky desktop HUD cards & scaled typography
-    │   └── lockscreen.c    # Hyprlock alpha-dimmed lock screen & PIN entry
+    │   ├── lockscreen.c    # Hyprlock alpha-dimmed lock screen & PIN entry
+    │   ├── startmenu.c     # Drop-down Start Menu popup with app tiles & power actions
+    │   └── notification.c  # Desktop Toast Notification system with progress bar
     ├── kernel/
     │   └── kernel.c        # kernel_main init order, echo loop & test hooks
     └── lib/
         ├── kprintf.c       # kprintf parser (%c, %s, %d, %u, %x, %p)
-        └── string.c        # strlen, memset, memcpy, memcmp
+        └── string.c        # strlen, memset, memcpy, memcmp, strlcpy, strlcat
 ```
 
 ---
@@ -193,6 +208,22 @@ make deploy
 - **`[F7]`**: Page Fault exception via unmapped write (`0xDEADB000`)
 - **`[F8]`**: Heap Growth Test (allocates 200 KB across 10 blocks of 20 KB to force expansion past 64 KB, validates pattern integrity, verifies PMM frame consumption, checks page table mappings, tests reverse-order `kfree` coalescing, and verifies 100 MB oversize rejection)
 - **`[F9]`**: Mouse Paint Demo (launches interactive 1024x768x32 graphics paint demo with 3 MB off-screen back buffer, Bresenham line painting, palette selection, clear button, software arrow cursor with save-under buffer, and ESC key return)
-- **`[F10]`**: Desktop Window Manager & Productivity Apps (launches full graphical windowed desktop environment featuring Start Menu, desktop shortcut icons, and 4 productivity apps: Calculator, Multi-Line Text Editor, Mini Spreadsheet with formula engine, and Real-Time Clock & Calendar, alongside the System Monitor and About dialogs, with title bar dragging clamped to screen bounds and ESC/Shutdown exit)
+- **`[F10]`**: Desktop Window Manager & Productivity Apps (launches full graphical windowed desktop environment featuring Start Menu, desktop shortcut icons, and productivity apps, alongside the System Monitor and About dialogs, with title bar dragging clamped to screen bounds and ESC/Shutdown exit)
 - **`[F11]`**: Spawn Compute Worker Task (dynamically creates and enqueues a multi-second concurrent background worker task demonstrating time-slice preemption, timed sleep `task_sleep_ms`, and clean zombie stack deallocation upon exit)
 - **`[F12]`**: Process & Task Table Dump (prints formatted `ps` process table containing PID, State, cumulative timer ticks, stack size, and task name to COM1 serial and active screen)
+
+### Desktop Environment Hotkeys
+Once inside the Desktop Window Manager:
+- **`[F1]`**: Toggle Modern Drop-Down Start Menu Popup
+- **`[F2]`**: Open Photos & Image Viewer (PPM P3 ASCII / P6 Binary, Zoom, Filters)
+- **`[F3]`**: Open Media Player & Chiptune Synthesizer (PC Speaker audio, 4 tunes, spectrum visualizer)
+- **`[F4]`**: Open Retro 8-Bit Breakout Arcade Game (fixed-point physics, brick breaking)
+- **`[F5]`**: Toggle Conky Desktop Telemetry HUD Cards
+- **`[F6]`**: Lock Screen Session (Hyprlock with PIN `1234`)
+- **`[F7]`**: Open System Settings & Control Center (4 Tabs: Display, Audio, Security, Power)
+- **`[F8]`**: Open Graphical File Explorer (Browse RamFS, Create Note, Delete, Open in Editor)
+- **`[F9]`**: Open Desktop Terminal CLI Shell (`ls`, `cat`, `write`, `rm`, `ps`, `kill`, `http_pruthvi command code 0`)
+- **`[F10]`**: Open Retro Minesweeper Game (9x9 grid, 10 mines, 7-segment LED, smiley)
+- **`[F11]`**: Spawn Concurrent Background Worker Task
+- **`[F12]`**: Open Graphical Task Manager (process list, memory stats, task kill)
+- **`[ESC]`**: Clean Exit from Desktop back to Framebuffer Console

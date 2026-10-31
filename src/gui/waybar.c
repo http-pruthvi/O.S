@@ -1,14 +1,14 @@
 #include "gui/waybar.h"
 #include "gui/theme.h"
+#include "gui/startmenu.h"
+#include "gui/lockscreen.h"
+#include "apps/clock.h"
 #include "gfx/gfx.h"
 #include "gfx/font.h"
 #include "drivers/timer.h"
 #include "mm/pmm.h"
 #include "proc/task.h"
 #include "lib/string.h"
-
-/* Forward declaration for lock screen trigger */
-extern void lockscreen_activate(void);
 
 static int s_active_workspace = 1;
 
@@ -94,7 +94,14 @@ void waybar_render(int clip_x, int clip_y, int clip_w, int clip_h) {
         }
     }
 
-    /* 3. Centered Brand Chip */
+    /* 3. Start Menu Chip [ MyOS ] */
+    int start_x = 124;
+    int start_w = 68;
+    gfx_fill_rect(start_x, 4, start_w, 20, bar_bg);
+    gfx_draw_rect(start_x, 4, start_w, 20, bar_border);
+    gfx_draw_string(start_x + 10, 6, "MyOS", accent_pri, bar_bg, true);
+
+    /* 4. Centered Brand Chip */
     int center_w = 260;
     int center_x = (1024 - center_w) / 2;
     int center_y = 4;
@@ -176,9 +183,27 @@ bool waybar_handle_mouse(int mx, int my, bool left_pressed) {
         }
     }
 
+    /* Start Menu Chip Click (x: 124 to 194) */
+    if (mx >= 124 && mx < 194 && my >= 4 && my < 24) {
+        startmenu_toggle();
+        return true;
+    }
+
+    /* Centered Brand Chip Click (x: 382 to 642) also opens Start Menu */
+    if (mx >= 382 && mx < 642 && my >= 4 && my < 24) {
+        startmenu_toggle();
+        return true;
+    }
+
     /* Lock Button Click (x: 904 to 954) */
     if (mx >= 904 && mx < 954 && my >= 4 && my < 24) {
         lockscreen_activate();
+        return true;
+    }
+
+    /* Clock Chip Click (x: 960 to 1016) opens Clock & Calendar app */
+    if (mx >= 960 && mx < 1016 && my >= 4 && my < 24) {
+        app_clock_open();
         return true;
     }
 
