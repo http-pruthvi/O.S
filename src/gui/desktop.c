@@ -1,6 +1,7 @@
 #include "gui/desktop.h"
 #include "gui/wm.h"
 #include "gui/widget.h"
+#include "apps/launcher.h"
 #include "gfx/gfx.h"
 #include "gfx/cursor.h"
 #include "gfx/fb_console.h"
@@ -251,6 +252,9 @@ void desktop_run(void) {
         return;
     }
 
+    /* Initialize Application Launcher */
+    launcher_init();
+
     /* 2. Setup showcase windows and child widgets */
     setup_showcase_windows();
 
@@ -268,6 +272,12 @@ void desktop_run(void) {
 
     /* 5. Desktop Event Loop */
     while (1) {
+        /* Check if shutdown requested via Start Menu */
+        if (launcher_should_exit()) {
+            serial_writestring("[DESKTOP] Exit requested via Start Menu. Returning to console...\n");
+            break;
+        }
+
         /* A. Process Keyboard Input */
         if (keyboard_has_char()) {
             char c = keyboard_getchar();
@@ -318,3 +328,4 @@ void desktop_run(void) {
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     serial_writestring("[DESKTOP] Desktop exited. Framebuffer console restored.\n");
 }
+

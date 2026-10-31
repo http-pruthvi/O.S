@@ -1,5 +1,6 @@
 #include "gui/wm.h"
 #include "gui/widget.h"
+#include "apps/launcher.h"
 #include "gfx/gfx.h"
 #include "gfx/font.h"
 #include "drivers/timer.h"
@@ -233,9 +234,12 @@ void wm_render_taskbar(int clip_x, int clip_y, int clip_w, int clip_h) {
     int btn_h = 28;
 
     if (btn_x < clip_r && btn_x + btn_w > clip_x && btn_y < clip_b && btn_y + btn_h > clip_y) {
-        gfx_fill_rect(btn_x, btn_y, btn_w, btn_h, WM_COLOR_START_BTN);
-        gfx_draw_rect(btn_x, btn_y, btn_w, btn_h, 0x004A7BB8);
-        gfx_draw_string(btn_x + 10, btn_y + 6, "[Start]", WM_COLOR_START_TXT, WM_COLOR_START_BTN, true);
+        bool sm_open = launcher_is_start_menu_open();
+        uint32_t btn_bg = sm_open ? 0x0017355B : WM_COLOR_START_BTN;
+        gfx_fill_rect(btn_x, btn_y, btn_w, btn_h, btn_bg);
+        gfx_draw_rect(btn_x, btn_y, btn_w, btn_h, sm_open ? 0x000F223A : 0x004A7BB8);
+        int text_off = sm_open ? 1 : 0;
+        gfx_draw_string(btn_x + 10 + text_off, btn_y + 6 + text_off, "[Start]", WM_COLOR_START_TXT, btn_bg, true);
     }
 
     /* 3. Draw Window Tabs for all open windows */
@@ -319,6 +323,9 @@ void wm_invalidate_rect(int x, int y, int w, int h) {
             text_y < y + h && text_y + FONT_GLYPH_HEIGHT > y) {
             gfx_draw_string(text_x, text_y, title, 0x00324866, WM_COLOR_DESKTOP, true);
         }
+
+        /* Draw desktop shortcut icons */
+        launcher_render_desktop_icons(x, y, w, desktop_h);
     }
 
     /* 2. Composite Windows from bottom to top (Painter's Algorithm) */
@@ -335,7 +342,12 @@ void wm_invalidate_rect(int x, int y, int w, int h) {
         wm_render_taskbar(x, y, w, h);
     }
 
-    /* 4. Flush to Video Memory */
+    /* 4. Composite Start Menu if open and intersecting dirty rect */
+    if (launcher_is_start_menu_open()) {
+        launcher_render_start_menu(x, y, w, h);
+    }
+
+    /* 5. Flush to Video Memory */
     gfx_flush_rect(x, y, w, h);
 }
 
@@ -360,8 +372,23 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
 
     /* 1. Handle Left Click Down */
     if (left_pressed) {
-        /* A. Check Taskbar clicks (y >= WM_TASKBAR_Y) */
+        /* A. Handle open Start Menu clicks */
+        if (launcher_is_start_menu_open()) {
+            if (launcher_handle_mouse(mx, my, left_pressed)) {
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+        }
+
+        /* B. Check Taskbar clicks (y >= WM_TASKBAR_Y) */
         if (my >= WM_TASKBAR_Y) {
+            /* Start button check (x: 6 to 78) */
+            if (mx >= 6 && mx < 78) {
+                launcher_toggle_start_menu();
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+
             int tab_x = 86;
             int tab_w = 140;
             int tab_spacing = 6;
@@ -383,7 +410,7 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
             return;
         }
 
-        /* B. Check Window Hit Testing (from top window to bottom window) */
+        /* C. Check Window Hit Testing (from top window to bottom window) */
         window_t* hit_win = NULL;
         window_hit_t hit_type = WINDOW_HIT_NONE;
 
@@ -422,6 +449,12 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
                 wm_drag_window = hit_win;
                 wm_drag_offset_x = mx - hit_win->x;
                 wm_drag_offset_y = my - hit_win->y;
+            }
+        } else {
+            /* D. No window hit: check desktop shortcut icons */
+            if (launcher_handle_mouse(mx, my, left_pressed)) {
+                wm_prev_buttons = ev->buttons;
+                return;
             }
         }
     }
