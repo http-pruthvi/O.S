@@ -55,19 +55,25 @@ static int print_unsigned(uint32_t num, uint32_t base, bool pad_zeros, int min_w
  * Converts a signed 32-bit integer to decimal string and outputs it.
  * Handles INT32_MIN (-2147483648) safely using unsigned arithmetic.
  */
-static int print_signed(int32_t num) {
+static int print_signed(int32_t num, int min_width) {
     int count = 0;
     uint32_t uval;
+    bool is_neg = false;
 
     if (num < 0) {
-        kputc('-');
-        count++;
+        is_neg = true;
         uval = (uint32_t)(-(num + 1)) + 1; /* Avoids overflow on -2147483648 */
     } else {
         uval = (uint32_t)num;
     }
 
-    count += print_unsigned(uval, 10, false, 0);
+    if (is_neg) {
+        kputc('-');
+        count++;
+        if (min_width > 0) min_width--;
+    }
+
+    count += print_unsigned(uval, 10, false, min_width);
     return count;
 }
 
@@ -91,6 +97,21 @@ int vkprintf(const char* fmt, va_list args) {
 
         /* Format specifier encountered */
         i++;
+
+        /* Optional zero-padding flag */
+        bool pad_zeros = false;
+        if (fmt[i] == '0') {
+            pad_zeros = true;
+            i++;
+        }
+
+        /* Optional minimum width */
+        int width = 0;
+        while (fmt[i] >= '0' && fmt[i] <= '9') {
+            width = width * 10 + (fmt[i] - '0');
+            i++;
+        }
+
         char spec = fmt[i];
 
         switch (spec) {
@@ -105,6 +126,14 @@ int vkprintf(const char* fmt, va_list args) {
                 if (!str) {
                     str = "(null)";
                 }
+                int slen = 0;
+                while (str[slen]) slen++;
+                int pad = width - slen;
+                while (pad > 0) {
+                    kputc(' ');
+                    count++;
+                    pad--;
+                }
                 while (*str) {
                     kputc(*str++);
                     count++;
@@ -113,17 +142,17 @@ int vkprintf(const char* fmt, va_list args) {
             }
             case 'd': {
                 int32_t val = va_arg(args, int32_t);
-                count += print_signed(val);
+                count += print_signed(val, width);
                 break;
             }
             case 'u': {
                 uint32_t val = va_arg(args, uint32_t);
-                count += print_unsigned(val, 10, false, 0);
+                count += print_unsigned(val, 10, pad_zeros, width);
                 break;
             }
             case 'x': {
                 uint32_t val = va_arg(args, uint32_t);
-                count += print_unsigned(val, 16, false, 0);
+                count += print_unsigned(val, 16, pad_zeros, width);
                 break;
             }
             case 'p': {
