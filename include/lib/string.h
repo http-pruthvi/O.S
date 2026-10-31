@@ -42,4 +42,10 @@ char* strcat(char* dest, const char* src);
 /* Appends at most count characters of src to dest */
 char* strncat(char* dest, const char* src, size_t count);
 
+/* Bounded string copy with guaranteed null-termination (Security Hardened) */
+size_t strlcpy(char* dest, const char* src, size_t size);
+
+/* Bounded string append with guaranteed null-termination (Security Hardened) */
+size_t strlcat(char* dest, const char* src, size_t size);
+
 #endif /* LIB_STRING_H */

@@ -88,6 +88,7 @@ void task_init(void) {
     uint8_t* idle_stack = (uint8_t*)kmalloc(TASK_STACK_SIZE);
     idle_task->stack_base = idle_stack;
     idle_task->stack_size = TASK_STACK_SIZE;
+    *(uint32_t*)idle_stack = TASK_CANARY_MAGIC; /* Stack Canary Guard */
 
     /* Forge idle stack */
     uintptr_t stack_top = (uintptr_t)(idle_stack + TASK_STACK_SIZE);
@@ -165,6 +166,7 @@ task_t* task_create(const char* name, task_entry_t entry, void* arg) {
     task->stack_base = stack_base;
     task->stack_size = TASK_STACK_SIZE;
     task->is_boot_task = false;
+    *(uint32_t*)stack_base = TASK_CANARY_MAGIC; /* Plant Stack Canary Guard */
     task->wake_tick = 0;
     task->ticks_run = 0;
     task->time_slice = TASK_DEFAULT_TIME_SLICE;
@@ -384,4 +386,24 @@ bool task_kill(uint32_t pid) {
     irq_restore(flags);
     return true;
 }
+
+/*
+ * task_check_canary:
+ * Validates that the stack canary word at stack_base is intact.
+ * Returns true if valid, false if corrupted (indicating stack overflow).
+ */
+bool task_check_canary(task_t* task) {
+    if (!task || task->is_boot_task || !task->stack_base) {
+        return true;
+    }
+
+    uint32_t val = *(uint32_t*)task->stack_base;
+    if (val != TASK_CANARY_MAGIC) {
+        kprintf("[PANIC] Security Alert: Stack Canary Corrupted for Task %u ('%s')! (Val: 0x%x, Expected: 0x%x)\n",
+                task->id, task->name, val, TASK_CANARY_MAGIC);
+        return false;
+    }
+    return true;
+}
+
 

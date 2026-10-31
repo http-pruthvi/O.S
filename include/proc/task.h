@@ -18,6 +18,7 @@
 #define TASK_NAME_MAX_LEN 32
 #define TASK_STACK_SIZE   8192   /* 8 KB per task stack */
 #define TASK_DEFAULT_TIME_SLICE 10 /* 10 timer ticks = 100 ms at 100 Hz */
+#define TASK_CANARY_MAGIC 0xDEADBEEF /* Stack boundary canary guard */
 
 /* Task execution states */
 typedef enum task_state {
@@ -88,6 +89,9 @@ task_t* task_by_id(uint32_t pid);
 
 /* Terminates a task by PID (PID 0 and 1 are protected) */
 bool task_kill(uint32_t pid);
+
+/* Security Hardening: Validates stack canary integrity against buffer overflow */
+bool task_check_canary(task_t* task);
 
 /* Returns the total number of tasks in the system */
 uint32_t task_get_count(void);

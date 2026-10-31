@@ -3,6 +3,9 @@
 #include "apps/editor.h"
 #include "apps/explorer.h"
 #include "apps/taskmgr.h"
+#include "apps/minesweeper.h"
+#include "apps/snake.h"
+#include "apps/control.h"
 #include "fs/vfs.h"
 #include "gui/window.h"
 #include "gui/widget.h"
@@ -180,6 +183,7 @@ static void term_execute_cmd(const char* cmd) {
         term_print("  uptime        - Show system uptime in seconds\n", 0x00FFFFFF);
         term_print("  echo <text>   - Print text to terminal\n", 0x00FFFFFF);
         term_print("  calc / editor / files / top - Launch desktop apps\n", 0x00A0D0FF);
+        term_print("  mines / snake / control     - Launch games & settings\n", 0x00A0D0FF);
     } else if (strcmp(cmd, "clear") == 0) {
         term_clear();
     } else if (strcmp(cmd, "ls") == 0) {
@@ -357,6 +361,15 @@ static void term_execute_cmd(const char* cmd) {
     } else if (strcmp(cmd, "top") == 0) {
         app_taskmgr_open();
         term_print("Launched Task Manager\n", 0x0055FF55);
+    } else if (strcmp(cmd, "mines") == 0) {
+        app_minesweeper_open();
+        term_print("Launched Minesweeper\n", 0x0055FF55);
+    } else if (strcmp(cmd, "snake") == 0) {
+        app_snake_open();
+        term_print("Launched Snake Arcade\n", 0x0055FF55);
+    } else if (strcmp(cmd, "control") == 0) {
+        app_control_open();
+        term_print("Launched Control Panel\n", 0x0055FF55);
     } else {
         term_print("Unknown command: '", 0x00FF5555);
         term_print(cmd, 0x00FF5555);

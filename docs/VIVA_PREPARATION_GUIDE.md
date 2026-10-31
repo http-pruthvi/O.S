@@ -391,3 +391,4 @@ Rather than following simple online copy-paste tutorials that stop at VGA text m
 4. It includes four functional **in-kernel productivity applications** (Calculator, Text Editor, Spreadsheet with formulas, Clock).
 5. It implements **preemptive round-robin multitasking** with independent 8 KB stacks and assembly context switching.
 6. Every module is documented, verified with test hooks `[F1]`–`[F12]`, and version-controlled with zero external library bloat.
+

@@ -20,6 +20,7 @@ static int       wm_drag_offset_y = 0;
 
 /* Mouse button tracking */
 static uint8_t   wm_prev_buttons  = 0;
+static uint32_t  s_wallpaper_color = WM_COLOR_DESKTOP;
 
 /* Helper: integer min and max */
 static inline int min_val(int a, int b) { return (a < b) ? a : b; }
@@ -312,16 +313,16 @@ void wm_invalidate_rect(int x, int y, int w, int h) {
     /* 1. Clear Desktop Area in dirty region */
     int desktop_h = min_val(y + h, WM_TASKBAR_Y) - y;
     if (desktop_h > 0) {
-        gfx_fill_rect(x, y, w, desktop_h, WM_COLOR_DESKTOP);
+        gfx_fill_rect(x, y, w, desktop_h, s_wallpaper_color);
 
         /* Draw subtle desktop watermark centered if within dirty bounds */
-        const char title[] = "MyOS Desktop Environment (Milestone 5)";
+        const char title[] = "MyOS Desktop Environment";
         int text_x = (WM_SCREEN_WIDTH - (int)strlen(title) * FONT_GLYPH_WIDTH) / 2;
         int text_y = (WM_TASKBAR_Y - FONT_GLYPH_HEIGHT) / 2;
 
         if (text_x < x + w && text_x + (int)strlen(title) * FONT_GLYPH_WIDTH > x &&
             text_y < y + h && text_y + FONT_GLYPH_HEIGHT > y) {
-            gfx_draw_string(text_x, text_y, title, 0x00324866, WM_COLOR_DESKTOP, true);
+            gfx_draw_string(text_x, text_y, title, 0x00324866, s_wallpaper_color, true);
         }
 
         /* Draw desktop shortcut icons */
@@ -538,4 +539,21 @@ void wm_handle_keyboard(char c) {
  */
 bool wm_is_dragging(void) {
     return wm_drag_active;
+}
+
+/*
+ * wm_set_wallpaper_color:
+ * Updates the desktop background color and triggers full desktop re-compositing.
+ */
+void wm_set_wallpaper_color(uint32_t color) {
+    s_wallpaper_color = color;
+    wm_redraw_all();
+}
+
+/*
+ * wm_get_wallpaper_color:
+ * Returns the currently active wallpaper color.
+ */
+uint32_t wm_get_wallpaper_color(void) {
+    return s_wallpaper_color;
 }

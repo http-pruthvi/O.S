@@ -124,3 +124,4 @@ int vfs_create(const char* path, uint32_t flags);
 int vfs_delete(const char* path);
 
 #endif /* FS_VFS_H */
+

@@ -189,3 +189,49 @@ char* strncat(char* dest, const char* src, size_t count) {
     return dest;
 }
 
+/*
+ * strlcpy:
+ * Bounded string copy with guaranteed null-termination.
+ * Always null-terminates dest if size > 0.
+ * Returns total length of src string (for truncation detection).
+ */
+size_t strlcpy(char* dest, const char* src, size_t size) {
+    if (!src) return 0;
+    size_t src_len = strlen(src);
+
+    if (size > 0 && dest) {
+        size_t copy_len = (src_len >= size) ? (size - 1) : src_len;
+        memcpy(dest, src, copy_len);
+        dest[copy_len] = '\0';
+    }
+
+    return src_len;
+}
+
+/*
+ * strlcat:
+ * Bounded string concatenation with guaranteed null-termination.
+ * Appends at most (size - dest_len - 1) characters from src to dest.
+ * Returns initial length of dest + length of src.
+ */
+size_t strlcat(char* dest, const char* src, size_t size) {
+    if (!dest || !src) return 0;
+    size_t dest_len = strlen(dest);
+    size_t src_len = strlen(src);
+
+    if (dest_len >= size) {
+        return size + src_len;
+    }
+
+    size_t copy_len = size - dest_len - 1;
+    if (src_len < copy_len) {
+        copy_len = src_len;
+    }
+
+    memcpy(dest + dest_len, src, copy_len);
+    dest[dest_len + copy_len] = '\0';
+
+    return dest_len + src_len;
+}
+
+

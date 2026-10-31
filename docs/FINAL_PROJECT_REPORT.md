@@ -254,3 +254,4 @@ MyOS demonstrates that a complete, robust, multitasking operating system with hi
 2. **System Call Interface (`int 0x80` / `SYSENTER`)**: Implementing standard POSIX-like system calls (`read`, `write`, `fork`, `exec`).
 3. **Virtual File System (VFS) & Ramdisk (TAR/FAT)**: Providing persistent storage so the text editor can save and load files from disk.
 4. **x86-64 Long Mode Port**: Upgrading the bootloader and memory management to 64-bit sub-architecture with 4-level paging.
+

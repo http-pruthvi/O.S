@@ -15,3 +15,4 @@
 void app_terminal_open(void);
 
 #endif /* APPS_TERMINAL_H */
+

@@ -6,6 +6,9 @@
 #include "apps/taskmgr.h"
 #include "apps/explorer.h"
 #include "apps/terminal.h"
+#include "apps/minesweeper.h"
+#include "apps/snake.h"
+#include "apps/control.h"
 #include "gui/wm.h"
 #include "gui/window.h"
 #include "gui/widget.h"
@@ -222,7 +225,10 @@ static desktop_icon_t s_desktop_icons[] = {
     {  24, 454, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "About",      launcher_launch_about  },
     { 114,  24, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "Explorer",   app_explorer_open      },
     { 114, 110, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "Terminal",   app_terminal_open      },
-    { 114, 196, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "SysMon",     launcher_launch_sysmon }
+    { 114, 196, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "SysMon",     launcher_launch_sysmon },
+    { 114, 282, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "Mines",      app_minesweeper_open   },
+    { 114, 368, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "Snake",      app_snake_open         },
+    { 114, 454, LAUNCHER_ICON_WIDTH, LAUNCHER_ICON_HEIGHT, "Control",    app_control_open       }
 };
 #define NUM_DESKTOP_ICONS (int)(sizeof(s_desktop_icons) / sizeof(s_desktop_icons[0]))
 
@@ -235,6 +241,9 @@ static menu_item_t s_menu_items[] = {
     { "Calculator",       launcher_launch_calc,   false },
     { "Spreadsheet",      launcher_launch_sheet,  false },
     { "Clock & Calendar", launcher_launch_clock,  false },
+    { "Minesweeper",      app_minesweeper_open,   false },
+    { "Snake Arcade",     app_snake_open,         false },
+    { "Control Panel",    app_control_open,       false },
     { "Paint Demo",       on_action_paint,        true  }, /* Separator line after */
     { "Shutdown (Exit)",  on_action_exit,         false }
 };
@@ -379,6 +388,47 @@ static void draw_icon_graphic(int icon_idx, int cx, int cy) {
             /* Stand */
             gfx_fill_rect(cx - 4, cy + 8, 8, 4, 0x00506070);
             gfx_fill_rect(cx - 8, cy + 12, 16, 2, 0x00506070);
+            break;
+
+        case 9: /* Minesweeper: gray tile with spike mine */
+            gfx_fill_rect(cx - 15, cy - 15, 30, 30, 0x00C0C0C0);
+            gfx_draw_rect(cx - 15, cy - 15, 30, 30, 0x00707070);
+            /* Mine central body */
+            gfx_fill_rect(cx - 6, cy - 6, 12, 12, 0x00101010);
+            gfx_fill_rect(cx - 8, cy - 4, 16, 8, 0x00101010);
+            gfx_fill_rect(cx - 4, cy - 8, 8, 16, 0x00101010);
+            /* Spikes */
+            gfx_draw_line(cx - 10, cy, cx + 10, cy, 0x00101010);
+            gfx_draw_line(cx, cy - 10, cx, cy + 10, 0x00101010);
+            gfx_draw_line(cx - 7, cy - 7, cx + 7, cy + 7, 0x00101010);
+            gfx_draw_line(cx - 7, cy + 7, cx + 7, cy - 7, 0x00101010);
+            /* White glint */
+            gfx_fill_rect(cx - 3, cy - 3, 3, 3, 0x00FFFFFF);
+            break;
+
+        case 10: /* Snake: green serpent with red apple */
+            gfx_fill_rect(cx - 15, cy - 15, 30, 30, 0x00182818);
+            gfx_draw_rect(cx - 15, cy - 15, 30, 30, 0x00336633);
+            /* Snake body segments */
+            gfx_fill_rect(cx - 10, cy - 8, 8, 8, 0x0033CC33);
+            gfx_fill_rect(cx - 2,  cy - 8, 8, 8, 0x0033CC33);
+            gfx_fill_rect(cx - 2,  cy,     8, 8, 0x0022AA22);
+            gfx_fill_rect(cx - 2,  cy + 6, 8, 8, 0x0022AA22);
+            gfx_fill_rect(cx + 4,  cy + 6, 8, 8, 0x0022AA22);
+            /* Red apple */
+            gfx_fill_rect(cx + 4, cy - 6, 6, 6, 0x00EE2222);
+            gfx_fill_rect(cx + 6, cy - 8, 2, 2, 0x0033AA33); /* Stem */
+            break;
+
+        case 11: /* Control Panel: slider switches and gear palette */
+            gfx_fill_rect(cx - 15, cy - 15, 30, 30, 0x003A4D59);
+            gfx_draw_rect(cx - 15, cy - 15, 30, 30, 0x009BB5C4);
+            /* Slider tracks */
+            gfx_fill_rect(cx - 10, cy - 7, 20, 3, 0x00202B33);
+            gfx_fill_rect(cx - 10, cy + 3, 20, 3, 0x00202B33);
+            /* Slider knobs */
+            gfx_fill_rect(cx - 4, cy - 10, 6, 9, 0x0000C0FF);
+            gfx_fill_rect(cx + 3, cy,      6, 9, 0x00FFB020);
             break;
 
         default:

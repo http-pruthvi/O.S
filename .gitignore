@@ -4,3 +4,5 @@ build/
 *.bin
 *.iso
 *.log
+.agents/
+.planning/

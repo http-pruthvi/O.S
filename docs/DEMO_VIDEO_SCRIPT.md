@@ -176,3 +176,4 @@
 > "In conclusion, MyOS successfully demonstrates that an operating system can be developed from bare-metal x86 hardware up to a modern graphical windowed environment with preemptive multitasking—completely from first principles without relying on third-party libraries.
 > 
 > The codebase is fully modular, documented, and published on GitHub. Thank you for your time, and I am now ready for the viva examination."
+

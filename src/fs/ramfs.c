@@ -100,6 +100,11 @@ static uint32_t ramfs_write(vfs_node_t* node, uint32_t offset, uint32_t size, co
         return 0;
     }
 
+    /* Security Hardening: Guard against integer wrap-around & oversized allocations */
+    if (offset + size < offset || size > 0x10000000) {
+        return 0;
+    }
+
     ramfs_entry_t* entry = (ramfs_entry_t*)node->private_data;
     if (!entry) {
         return 0;
@@ -340,3 +345,4 @@ vfs_node_t* ramfs_init(void) {
     kprintf("[RAMFS] RamFS initialized with 4 pre-seeded documents\n");
     return &s_ramfs_root->vfs_node;
 }
+

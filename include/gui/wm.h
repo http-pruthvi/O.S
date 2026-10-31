@@ -64,4 +64,10 @@ void wm_render_taskbar(int clip_x, int clip_y, int clip_w, int clip_h);
 /* Checks if a modal or window drag operation is currently active */
 bool wm_is_dragging(void);
 
+/* Sets desktop wallpaper background color and redraws */
+void wm_set_wallpaper_color(uint32_t color);
+
+/* Returns currently active wallpaper color */
+uint32_t wm_get_wallpaper_color(void);
+
 #endif /* GUI_WM_H */

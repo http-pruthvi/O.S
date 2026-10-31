@@ -24,3 +24,4 @@ vfs_node_t* ramfs_init(void);
 int ramfs_create_file(const char* name, const char* initial_content);
 
 #endif /* FS_RAMFS_H */
+

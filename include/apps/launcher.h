@@ -17,7 +17,7 @@
 
 /* Start Menu dimensions */
 #define LAUNCHER_MENU_WIDTH   220
-#define LAUNCHER_MENU_HEIGHT  276
+#define LAUNCHER_MENU_HEIGHT  360
 #define LAUNCHER_MENU_X       6
 #define LAUNCHER_MENU_Y       (768 - 36 - LAUNCHER_MENU_HEIGHT) /* Above taskbar */
 

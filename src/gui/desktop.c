@@ -6,6 +6,9 @@
 #include "apps/explorer.h"
 #include "apps/taskmgr.h"
 #include "apps/terminal.h"
+#include "apps/control.h"
+#include "apps/minesweeper.h"
+#include "apps/snake.h"
 #include "gfx/gfx.h"
 #include "gfx/cursor.h"
 #include "gfx/fb_console.h"
@@ -317,6 +320,11 @@ void desktop_run(void) {
                 serial_writestring("[DESKTOP] ESC pressed. Exiting desktop to console...\n");
                 break;
             }
+            if ((unsigned char)c == KEY_F7) {
+                serial_writestring("[DESKTOP] F7 pressed: Opening Control Panel...\n");
+                app_control_open();
+                continue;
+            }
             if ((unsigned char)c == KEY_F8) {
                 serial_writestring("[DESKTOP] F8 pressed: Opening File Explorer...\n");
                 app_explorer_open();
@@ -325,6 +333,11 @@ void desktop_run(void) {
             if ((unsigned char)c == KEY_F9) {
                 serial_writestring("[DESKTOP] F9 pressed: Opening Terminal...\n");
                 app_terminal_open();
+                continue;
+            }
+            if ((unsigned char)c == KEY_F10) {
+                serial_writestring("[DESKTOP] F10 pressed: Opening Minesweeper...\n");
+                app_minesweeper_open();
                 continue;
             }
             if ((unsigned char)c == KEY_F11) {

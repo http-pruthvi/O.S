@@ -85,6 +85,16 @@ vfs_node_t* vfs_lookup(const char* path) {
             continue;
         }
 
+        /* Security Hardening: Path canonicalization & traversal protection */
+        if (strcmp(token, ".") == 0) {
+            continue; /* Current directory reference */
+        }
+        if (strcmp(token, "..") == 0) {
+            /* Prevent directory escape beyond root */
+            curr = s_vfs_root;
+            continue;
+        }
+
         if (!curr->finddir) {
             return NULL;
         }
@@ -361,3 +371,4 @@ int vfs_delete(const char* path) {
 
     return parent->unlink(parent, basename);
 }
+

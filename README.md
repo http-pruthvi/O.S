@@ -44,10 +44,13 @@ myos/
 │   │   └── scheduler.h     # Preemptive round-robin scheduler & queues
 │   ├── apps/               # Desktop Productivity Applications (Milestone 6)
 │   │   ├── launcher.h      # Desktop launcher, shortcut icons & Start menu
-│   │   ├── calc.h          # 4-function desktop calculator
-│   │   ├── editor.h        # Multi-line text editor
+│   │   ├── calc.h          # Scientific 5-column desktop calculator (arithmetic, sqrt, x^2, 1/x, %)
+│   │   ├── editor.h        # Multi-line text editor with VFS save/load
 │   │   ├── sheet.h         # Mini spreadsheet with formula engine
-│   │   └── clock.h         # Live digital clock & monthly calendar
+│   │   ├── clock.h         # Live digital clock & monthly calendar
+│   │   ├── control.h       # Control Panel with wallpaper theme selector & security monitor
+│   │   ├── minesweeper.h   # Classic Windows Minesweeper (9x9, 10 mines, digital LED readouts)
+│   │   └── snake.h         # Retro Snake Arcade game with score tracking
 │   ├── arch/               # Architecture & hardware abstraction
 │   │   ├── lock.h          # Re-entrant interrupt masking (irq_save, irq_restore)
 │   │   ├── gdt.h           # Global Descriptor Table

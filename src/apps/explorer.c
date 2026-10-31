@@ -258,3 +258,4 @@ void app_explorer_open(void) {
 
     serial_writestring("[EXPLORER] File Explorer window opened\n");
 }
+

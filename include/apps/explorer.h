@@ -15,3 +15,4 @@
 void app_explorer_open(void);
 
 #endif /* APPS_EXPLORER_H */
+

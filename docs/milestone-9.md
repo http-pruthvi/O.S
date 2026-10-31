@@ -93,9 +93,16 @@ Terminating a task requires careful synchronization:
 | `src/apps/launcher.c` | **Updated** | Added desktop icons and Start Menu entries for Explorer, TaskMgr, and Terminal |
 | `include/proc/task.h` | **Updated** | Added `task_by_id()` and `task_kill()` prototypes |
 | `src/proc/task.c` | **Updated** | Implemented `task_by_id()` and `task_kill()` with system task protection |
-| `include/lib/string.h` | **Updated** | Added `strcat`, `strncat`, `strncmp` prototypes |
-| `src/lib/string.c` | **Updated** | Implemented `strcat`, `strncat`, `strncmp` |
-| `src/gui/desktop.c` | **Updated** | Added shortcut hooks `[F8]` (Explorer), `[F9]` (Terminal), `[F12]` (Task Manager) |
+| `include/lib/string.h` | **Updated** | Added `strcat`, `strncat`, `strncmp`, `strlcpy`, `strlcat` bounded string prototypes |
+| `src/lib/string.c` | **Updated** | Implemented `strcat`, `strncat`, `strncmp`, and OpenBSD-style `strlcpy`/`strlcat` |
+| `include/apps/control.h` | **Created** | Control Panel application interface with wallpaper themes and kernel security readout |
+| `src/apps/control.c` | **Created** | Control Panel GUI: theme buttons (Teal, Navy, Slate, Forest), security status, hardware specs |
+| `include/apps/minesweeper.h` | **Created** | Classic Windows Minesweeper game interface |
+| `src/apps/minesweeper.c` | **Created** | Minesweeper: 9x9 grid, 10 mines, 7-seg LED readouts, animated smiley, safe first-click, BFS flood fill |
+| `include/apps/snake.h` | **Created** | Retro Snake Arcade game interface |
+| `src/apps/snake.c` | **Created** | Snake Arcade: 20x20 grid, WASD/arrows, food apple, high score, zero warning build |
+| `src/apps/calc.c` | **Updated** | Upgraded to 5-column Scientific Calculator (sqrt, x^2, 1/x, %, DEL) |
+| `src/gui/desktop.c` | **Updated** | Added shortcut hooks `[F7]` (Control Panel), `[F8]` (Explorer), `[F9]` (Terminal), `[F10]` (Minesweeper), `[F12]` (Task Manager) |
 | `src/kernel/kernel.c` | **Updated** | Initialized VFS and RamFS during boot sequence; updated banner to Milestone 9 |
 
 ---
@@ -164,3 +171,43 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\os\run.ps1" -SourceI
 
 ### Q5: How are file open descriptors managed in the kernel?
 **Answer:** The kernel maintains a global descriptor table (`s_file_table[32]`). Calling `vfs_open()` finds an unused descriptor slot, binds it to the resolved `vfs_node_t*`, resets the seek offset to 0, increments the node's reference count, and returns the descriptor index as a handle for future read/write operations.
+
+---
+
+## 7. Kernel Security Hardening & Defenses
+
+To ensure robust operation and protect against common kernel vulnerabilities, Milestone 9 incorporates multi-layer defensive programming across the freestanding C codebase:
+
+1. **OpenBSD Bounded String Utilities (`strlcpy` and `strlcat`)**:
+   Standard C library string functions like `strcpy` and `strcat` are historically responsible for thousands of buffer overflow exploits. MyOS implements bounded `strlcpy` and `strlcat` which take the full buffer capacity as an explicit parameter, guarantee NUL-termination under all conditions, and truncate safely if text exceeds buffer bounds.
+2. **VFS Path Traversal & Sandbox Sanitization**:
+   `vfs_lookup()` checks path components for illegal directory traversal sequences (`.` and `..`), canonicalizing them to strictly prevent sandbox escape outside the virtual root `/`.
+3. **RamFS Integer Wrap-Around & Overflow Guards**:
+   Writing to files guards against arithmetic overflow (`offset + size < offset` or exceeding `RAMFS_MAX_FILE_SIZE`), preventing kernel heap heap-spray or buffer corruption.
+4. **Task Stack Canary Protection (`0xDEADBEEF`)**:
+   Every kernel task allocated an 8 KB stack has a canary magic word (`0xDEADBEEF`) placed at the base of the stack frame. `task_check_canary(task_t* task)` validates that deep recursion or unbounded stack usage has not breached the stack perimeter.
+5. **Architectural Memory Protection**:
+   Virtual Page 0 (`0x00000000`) is marked absent in the page directory, immediately trapping NULL pointer dereferences with a Page Fault exception (`#PF`), preventing silent corruption.
+
+---
+
+## 8. Windows Suite Expansion & Retro OG Games
+
+### 1. Control Panel
+- **Desktop Personalization**: Live wallpaper theme switcher supporting 4 bespoke palettes (Teal, Classic Navy, Slate Blue, Forest Green).
+- **Security Readout**: Real-time validation of Page 0 trap, Stack Canaries, VFS Sandbox, and Bounded String drivers.
+- **Hardware Specs**: System summary displaying x86 32-bit architecture, 1024x768x32 linear framebuffer, and 100 Hz preemptive timer.
+
+### 2. Classic Windows Minesweeper
+- **Board Configuration**: Authentic 9x9 grid with 10 hidden naval mines and 71 safe cells.
+- **Fair First-Click Protection**: Dynamically generates mine distribution using hardware timer jitter only after the player's first Dig click, strictly protecting the clicked coordinate and its 8 neighboring cells.
+- **BFS Flood-Fill Reveal**: Queue-based breadth-first search reveals connected zero-mine regions without consuming kernel stack space.
+- **Retro Windows 95 Visuals**: Sunken 3-character 7-segment digital LED readouts for remaining mines and elapsed timer; interactive yellow smiley button reflecting game state (normal, sunglasses on victory, shocked on detonation); toggleable Dig/Flag mode with red triangular pennants.
+
+### 3. Retro Snake Arcade
+- **Gameplay**: 20x20 grid with 14x14 pixel cells, smooth WASD and arrow key control, instantaneous keyboard responsiveness, food spawning, real-time score display, and high score tracking across sessions.
+
+### 4. Scientific Calculator Upgrades
+- Expanded to a 5-column desktop keypad adding Integer Square Root (`sqrt`), Square (`x^2`), Reciprocal (`1/x`), Percentage (`%`), and Backspace (`DEL`).
+
+
