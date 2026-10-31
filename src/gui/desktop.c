@@ -2,6 +2,7 @@
 #include "gui/wm.h"
 #include "gui/widget.h"
 #include "apps/launcher.h"
+#include "apps/clock.h"
 #include "gfx/gfx.h"
 #include "gfx/cursor.h"
 #include "gfx/fb_console.h"
@@ -301,10 +302,11 @@ void desktop_run(void) {
             wm_handle_mouse(&ev, mx, my);
         }
 
-        /* C. Update Taskbar Clock */
+        /* C. Update Taskbar Clock & Clock App */
         if (timer_is_clock_dirty()) {
             wm_render_taskbar(WM_SCREEN_WIDTH - 120, WM_TASKBAR_Y, 120, WM_TASKBAR_HEIGHT);
             gfx_flush_rect(WM_SCREEN_WIDTH - 120, WM_TASKBAR_Y, 120, WM_TASKBAR_HEIGHT);
+            app_clock_update();
             timer_clear_clock_dirty();
         }
 

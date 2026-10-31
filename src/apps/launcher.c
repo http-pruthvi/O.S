@@ -2,6 +2,7 @@
 #include "apps/calc.h"
 #include "apps/editor.h"
 #include "apps/sheet.h"
+#include "apps/clock.h"
 #include "gui/wm.h"
 #include "gui/window.h"
 #include "gui/widget.h"
@@ -188,11 +189,6 @@ void launcher_launch_about(void) {
     widget_add_to_window(s_win_about, btn_ok);
 
     wm_add_window(s_win_about);
-}
-
-/* Stubs for future commits (will be wired in Commit 5) */
-void __attribute__((weak)) app_clock_open(void) {
-    serial_writestring("[LAUNCHER] Clock requested (app_clock_open stub)\n");
 }
 
 void launcher_launch_calc(void)   { app_calc_open(); }
