@@ -50,6 +50,7 @@ window_t* window_create(int x, int y, int width, int height, const char* title, 
     win->first_widget = NULL;
     win->on_close = NULL;
     win->on_key = NULL;
+    win->on_click = NULL;
 
     /* Copy title safely */
     size_t i = 0;

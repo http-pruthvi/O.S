@@ -509,6 +509,9 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
     if (!wm_drag_active && wm_top_window && (wm_top_window->flags & WINDOW_FLAG_VISIBLE)) {
         int rx = mx - wm_top_window->client_x;
         int ry = my - wm_top_window->client_y;
+        if (left_pressed && wm_top_window->on_click) {
+            wm_top_window->on_click(wm_top_window, rx, ry);
+        }
         widget_dispatch_mouse(wm_top_window, rx, ry, left_down, left_pressed, left_released);
     }
 

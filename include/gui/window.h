@@ -73,6 +73,9 @@ typedef struct window {
 
     /* Optional user callback invoked when a key is pressed while window has focus */
     void (*on_key)(struct window* win, char c);
+
+    /* Optional user callback invoked when window client area is clicked */
+    void (*on_click)(struct window* win, int rx, int ry);
 } window_t;
 
 /*

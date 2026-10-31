@@ -1,6 +1,7 @@
 #include "apps/launcher.h"
 #include "apps/calc.h"
 #include "apps/editor.h"
+#include "apps/sheet.h"
 #include "gui/wm.h"
 #include "gui/window.h"
 #include "gui/widget.h"
@@ -189,10 +190,7 @@ void launcher_launch_about(void) {
     wm_add_window(s_win_about);
 }
 
-/* Stubs for future commits (will be wired in Commits 4-5) */
-void __attribute__((weak)) app_sheet_open(void) {
-    serial_writestring("[LAUNCHER] Spreadsheet requested (app_sheet_open stub)\n");
-}
+/* Stubs for future commits (will be wired in Commit 5) */
 void __attribute__((weak)) app_clock_open(void) {
     serial_writestring("[LAUNCHER] Clock requested (app_clock_open stub)\n");
 }
