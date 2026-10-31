@@ -80,6 +80,9 @@ void task_set_current(task_t* task);
 /* Returns head of the global linked list containing all active tasks */
 task_t* task_get_all(void);
 
+/* Unlinks a task from the global active tasks list and decrements count */
+void task_unlink(task_t* task);
+
 /* Returns the total number of tasks in the system */
 uint32_t task_get_count(void);
 

@@ -288,6 +288,34 @@ task_t* task_get_all(void) {
 }
 
 /*
+ * task_unlink:
+ * Safely unlinks a task from the global all-tasks list.
+ */
+void task_unlink(task_t* task) {
+    if (!task) return;
+
+    task_t* prev = NULL;
+    task_t* curr = all_tasks_head;
+
+    while (curr) {
+        if (curr == task) {
+            if (prev) {
+                prev->all_next = curr->all_next;
+            } else {
+                all_tasks_head = curr->all_next;
+            }
+            curr->all_next = NULL;
+            if (total_tasks > 0) {
+                total_tasks--;
+            }
+            break;
+        }
+        prev = curr;
+        curr = curr->all_next;
+    }
+}
+
+/*
  * task_get_count:
  * Returns total number of tasks in the system.
  */

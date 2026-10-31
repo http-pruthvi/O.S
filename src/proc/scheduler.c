@@ -122,7 +122,6 @@ task_t* scheduler_pick_next(void) {
 void scheduler_cleanup_zombies(void) {
     uint32_t flags = irq_save();
 
-    task_t* prev = NULL;
     task_t* curr = task_get_all();
     task_t* active = task_get_current();
 
@@ -130,23 +129,17 @@ void scheduler_cleanup_zombies(void) {
         task_t* next = curr->all_next;
 
         if (curr->state == TASK_ZOMBIE && curr != active) {
-            /* Unlink from global task list */
-            if (prev) {
-                prev->all_next = next;
-            }
-            /* Note: if curr is head of all_tasks, we would update head, but boot_task
-             * (PID 1) is permanent and idle_task (PID 0) never terminates.
-             */
+            /* Safely unlink from global task list */
+            task_unlink(curr);
 
             /* Free task stack if dynamically allocated */
             if (!curr->is_boot_task && curr->stack_base) {
                 kfree(curr->stack_base);
+                curr->stack_base = NULL;
             }
 
             /* Free Task Control Block */
             kfree(curr);
-        } else {
-            prev = curr;
         }
 
         curr = next;
