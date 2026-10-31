@@ -187,5 +187,50 @@ Physical Memory (PMM)                Virtual Memory (Paging)
 2. **Back Buffer Isolation**: The back buffer in system RAM contains only application and canvas pixels, never the cursor.
 3. **Save-Under Cursor**: When the cursor moves, the old 12x19 area is restored to VRAM from `save_under`, and the new 12x19 area is saved from the clean back buffer and drawn directly in VRAM. Mouse moves never trigger full-screen flushes.
 
+---
+
+## 7. Window Manager and Widgets Architecture (Milestone 5)
+
+```text
++-----------------------------------------------------------------------------------+
+|                        Window Manager & Compositor Layer                          |
++-----------------------------------------------------------------------------------+
+|  Window Data Structure (window_t):                                                |
+|    - Coordinates: (x, y), Dimensions: (width, height)                             |
+|    - Client Area: (client_x, client_y), Size: (client_w, client_h)                |
+|    - Canvas Buffer: Isolated RAM allocation (client_w * client_h * 4 bytes)       |
+|    - Flags: VISIBLE, FOCUSED, MOVABLE, MINIMIZED                                  |
+|    - Widgets List: Doubly linked list of child UI controls                        |
++-----------------------------------------------------------------------------------+
+|  Z-Order Compositing Pipeline (Painter's Algorithm):                              |
+|    1. Redraw Desktop Background (Solid 0x003A6EA5 or pattern)                    |
+|    2. Render Taskbar at Screen Bottom (y = 736..767, Start button, tabs, clock)  |
+|    3. Traverse Z-Order List from Bottom to Top (wm_bottom_window -> prev):        |
+|       - Draw 2px 3D outer border                                                  |
+|       - Draw Title Bar (Active Blue 0x001F487E or Inactive Gray 0x007A8A9E)       |
+|       - Draw Window Title Text & Close Button [X]                                 |
+|       - Blit window client_buffer into Off-Screen Back Buffer with clipping       |
+|    4. Flush Dirty Rectangle to VRAM (gfx_flush_rect) with cursor protection       |
++-----------------------------------------------------------------------------------+
+|  Input & Event Dispatch Flow:                                                     |
+|    - Mouse Click -> Top-to-Bottom Window Hit Test (wm_top_window -> next)         |
+|      * Title Bar: Initiates window drag; clamps (x, y) to desktop bounds          |
+|      * Close Button [X]: Destroys window and child widgets, frees client_buffer   |
+|      * Client Area: Dispatches mouse click to child widget hierarchy              |
+|    - Keyboard Event -> Dispatched to currently focused text box widget            |
++-----------------------------------------------------------------------------------+
+|  Widget Framework (widget_t):                                                     |
+|    - Button: 3D beveled relief (light top-left, dark bottom-right; inverted click)|
+|    - Label: Single-line string rendering with customizable text colors            |
+|    - Textbox: Sunken border, caret cursor, keyboard buffer append, backspace      |
++-----------------------------------------------------------------------------------+
+```
+
+### Key Architectural Invariants:
+1. **Client Memory Isolation**: Applications write only to their window's `client_buffer`. An application never directly modifies the screen back buffer or VRAM. This guarantees that window dragging and overlapping window composition never corrupt application contents.
+2. **Opposite Traversal Invariant**: Compositing *always* traverses **Bottom-to-Top** (so foreground windows paint over background windows), while hit-testing *always* traverses **Top-to-Bottom** (so the topmost visible window intercepts mouse clicks).
+3. **Desktop Boundaries**: Window dragging enforces strict clamping: a window's title bar cannot be dragged above the top of the screen (`y >= 0`) or below the taskbar (`y <= 736 - title_bar_height`), preventing orphaned or unreachable windows.
+
+
 
 

@@ -92,7 +92,7 @@ Keep a running docs/architecture.md that is updated as layers get added.
 - M2 (DONE): Interrupts & Drivers: GDT, IDT, ISRs, PIC remap, PIT timer, PS/2 keyboard
 - M3 (DONE): Memory: physical memory manager (using multiboot memory map), paging, kernel heap (with F8 growth test)
 - M4 (DONE): GUI Foundation: graphics mode (linear framebuffer 1024x768x32), framebuffer text console, drawing primitives, 8x16 font, PS/2 mouse driver (IRQ12), software mouse cursor, mouse paint demo
-- M5: Window Manager and Widgets: windows, title bars, dragging, z-order, buttons, labels, text boxes, taskbar, event dispatch
+- M5 (DONE): Window Manager and Widgets: windows, title bars, dragging, z-order, buttons, labels, text boxes, taskbar, event dispatch
 - M6: Apps: calculator, text editor (Notepad-like), mini spreadsheet (Excel-like), clock (apps run as windows inside the kernel)
 - M7: Processes & Scheduler: kernel tasks, context switch, round-robin scheduler (parked plan)
 - M8: Docs, report, demo video, viva prep
