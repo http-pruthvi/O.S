@@ -416,7 +416,7 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     /* Welcome Banner */
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
     kprintf("================================================================\n");
-    kprintf("  MyOS - 32-bit x86 Kernel (Milestone 5: Window Manager/Widgets)\n");
+    kprintf("  MyOS - 32-bit x86 Kernel (Milestone 6: Productivity Desktop)  \n");
     kprintf("================================================================\n");
 
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);

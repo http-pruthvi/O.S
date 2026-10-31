@@ -231,6 +231,54 @@ Physical Memory (PMM)                Virtual Memory (Paging)
 2. **Opposite Traversal Invariant**: Compositing *always* traverses **Bottom-to-Top** (so foreground windows paint over background windows), while hit-testing *always* traverses **Top-to-Bottom** (so the topmost visible window intercepts mouse clicks).
 3. **Desktop Boundaries**: Window dragging enforces strict clamping: a window's title bar cannot be dragged above the top of the screen (`y >= 0`) or below the taskbar (`y <= 736 - title_bar_height`), preventing orphaned or unreachable windows.
 
+---
+
+## 8. Desktop Productivity Applications Architecture (Milestone 6)
+
+```text
++-----------------------------------------------------------------------------------+
+|                        Desktop Productivity Applications Layer                    |
++-----------------------------------------------------------------------------------+
+|  Launcher & Environment Orchestration (apps/launcher.c):                          |
+|    - Desktop Icons: 6 stylized 2D shortcut glyphs on background (x = 24)          |
+|    - Start Menu: 3D beveled popup (220x218) above taskbar with "MyOS" banner      |
+|    - Single-Instance Management: Open app or bring existing window to front      |
+|    - Clean Console Handoff: Controlled exit back to framebuffer console           |
++-----------------------------------------------------------------------------------+
+|  Productivity Applications Suite:                                                 |
+|                                                                                   |
+|  1. Calculator (apps/calc.c):                                                     |
+|     - 4x5 button matrix & LCD display readout box                                 |
+|     - 32-bit integer arithmetic state machine (+, -, *, /, C, CE, +/-, =)         |
+|     - Native x86 idiv instruction; divide-by-zero & overflow protection           |
+|     - Dual mouse click & keyboard numeric key dispatch                            |
+|                                                                                   |
+|  2. Text Editor (apps/editor.c):                                                  |
+|     - Multi-line document buffer (64 lines x 60 columns)                          |
+|     - Dynamic caret rendering and cursor row/col tracking                         |
+|     - Enter newline splitting & Backspace line concatenation                      |
+|     - Real-time character/line metrics status bar & sample document loader        |
+|                                                                                   |
+|  3. Mini Spreadsheet (apps/sheet.c):                                              |
+|     - 2D grid matrix of 60 cells (6 columns A-F x 10 rows 1-10)                   |
+|     - Formula bar showing active cell reference (e.g. B3) & editable formula text |
+|     - Two-pass formula evaluation engine: =SUM, =AVG, =MIN, =MAX, cell math       |
+|     - Automatic dependency recalculation on cell modification                     |
+|                                                                                   |
+|  4. Real-Time Clock & Calendar (apps/clock.c):                                    |
+|     - Digital time readout (HH:MM:SS) updated continuously on PIT timer ticks     |
+|     - System uptime counter in seconds                                            |
+|     - Sakamoto's O(1) day-of-week calendar with month navigation & day highlight  |
++-----------------------------------------------------------------------------------+
+```
+
+### Cooperative In-Kernel Application Model:
+In Milestone 6, productivity applications run as cooperative in-kernel tasks in Ring 0. Each application allocates a dedicated window and client buffer, registering event hooks:
+- `on_key`: Directs keyboard character input to the active application (number keys in Calculator, text editing in Editor, formula typing in Spreadsheet).
+- `on_click`: Dispatches mouse clicks inside the client canvas (cell selection in Spreadsheet, text cursor positioning in Editor).
+- `on_close`: Safely tears down application resources, clears window pointers, and informs the Z-order compositor.
+
+
 
 
 
