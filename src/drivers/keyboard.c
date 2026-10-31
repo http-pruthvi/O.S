@@ -158,6 +158,12 @@ static void keyboard_handler(registers_t* regs) {
         return;
     }
 
+    if (scancode == 0x44) {
+        /* F10 key pressed (Scancode 0x44) */
+        buffer_put((char)KEY_F10);
+        return;
+    }
+
     /* 4. Character translation */
     if (scancode < 128) {
         char unshifted = scancode_unshifted[scancode];

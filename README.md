@@ -43,6 +43,11 @@ myos/
 │   │   ├── timer.h         # PIT 8254 timer driver (100 Hz, uptime)
 │   │   ├── keyboard.h      # PS/2 keyboard driver (Scancode Set 1)
 │   │   └── mouse.h         # PS/2 mouse driver (IRQ 12, packet parser)
+│   ├── gui/                # Window Manager & Widgets (Milestone 5)
+│   │   ├── window.h        # Window structures, title bars & client canvas
+│   │   ├── wm.h            # Z-order compositor, taskbar & dragging
+│   │   ├── widget.h        # Buttons, labels & single-line text boxes
+│   │   └── desktop.h       # Milestone 5 interactive desktop environment
 │   ├── gfx/                # Graphical Subsystem
 │   │   ├── fb.h            # Linear Framebuffer parser & paging mapper
 │   │   ├── font.h          # 8x16 bitmap font definition
@@ -93,6 +98,11 @@ myos/
     │   ├── gfx.c           # 2D primitives & 3 MB off-screen back buffer
     │   ├── cursor.c        # Software arrow cursor & save-under engine
     │   └── paint_demo.c    # Interactive mouse paint demo application
+    ├── gui/
+    │   ├── window.c        # Window rendering, frame, title bar & client canvas
+    │   ├── wm.c            # Z-order compositor, taskbar, dragging & hit test
+    │   ├── widget.c        # 3D relief buttons, labels & text boxes
+    │   └── desktop.c       # Desktop showcase environment with 3 windows
     ├── kernel/
     │   └── kernel.c        # kernel_main init order, echo loop & test hooks
     └── lib/
@@ -139,3 +149,4 @@ make deploy
 - **`[F7]`**: Page Fault exception via unmapped write (`0xDEADB000`)
 - **`[F8]`**: Heap Growth Test (allocates 200 KB across 10 blocks of 20 KB to force expansion past 64 KB, validates pattern integrity, verifies PMM frame consumption, checks page table mappings, tests reverse-order `kfree` coalescing, and verifies 100 MB oversize rejection)
 - **`[F9]`**: Mouse Paint Demo (launches interactive 1024x768x32 graphics paint demo with 3 MB off-screen back buffer, Bresenham line painting, palette selection, clear button, software arrow cursor with save-under buffer, and ESC key return)
+- **`[F10]`**: Desktop Window Manager (launches full graphical windowed desktop environment featuring 3 overlapping windows, interactive buttons with 3D relief, live text input box with keyboard focus, system monitor displaying PMM and Heap stats, taskbar with window tabs and uptime clock, title bar dragging clamped to screen bounds, and ESC key return to console)

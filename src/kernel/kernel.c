@@ -11,6 +11,7 @@
 #include "gfx/fb.h"
 #include "gfx/fb_console.h"
 #include "gfx/paint_demo.h"
+#include "gui/desktop.h"
 #include "drivers/vga.h"
 #include "drivers/serial.h"
 #include "drivers/timer.h"
@@ -491,7 +492,7 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     kprintf("  - [F3]: Memory Statistics          [F4]: Heap Stress & Coalesce Test\n");
     kprintf("  - [F5]: PMM Alloc/Free Test        [F6]: Page Fault: NULL Read (0x0)\n");
     kprintf("  - [F7]: Page Fault: Unmapped Write [F8]: Heap Growth Test (Past 64 KB)\n");
-    kprintf("  - [F9]: Mouse Paint Demo\n\n");
+    kprintf("  - [F9]: Mouse Paint Demo           [F10]: Desktop Window Manager\n\n");
 
     /* Initial draw of uptime clock in top-right corner if in graphics mode */
     if (fb_is_active()) {
@@ -569,6 +570,11 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
                 vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
                 extern void paint_demo_run(void);
                 paint_demo_run();
+            } else if (uc == KEY_F10) {
+                vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+                kprintf("\n>>> [TEST HOOK] F10 pressed: Starting Desktop Window Manager <<<\n");
+                vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+                desktop_run();
             } else if (c == '\n') {
                 kprintf("\n");
             } else if (c == '\b') {
