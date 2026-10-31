@@ -31,8 +31,12 @@ myos/
 │   ├── milestone-3.md      # Milestone 3 report and viva Q&A
 │   ├── milestone-4.md      # Milestone 4 report and viva Q&A
 │   ├── milestone-5.md      # Milestone 5 report and viva Q&A
-│   └── milestone-6.md      # Milestone 6 report and viva Q&A
+│   ├── milestone-6.md      # Milestone 6 report and viva Q&A
+│   └── milestone-7.md      # Milestone 7 report and viva Q&A
 ├── include/                # Header files
+│   ├── proc/               # Processes & Scheduler (Milestone 7)
+│   │   ├── task.h          # Task Control Block (TCB), states & task API
+│   │   └── scheduler.h     # Preemptive round-robin scheduler & queues
 │   ├── apps/               # Desktop Productivity Applications (Milestone 6)
 │   │   ├── launcher.h      # Desktop launcher, shortcut icons & Start menu
 │   │   ├── calc.h          # 4-function desktop calculator
@@ -40,6 +44,7 @@ myos/
 │   │   ├── sheet.h         # Mini spreadsheet with formula engine
 │   │   └── clock.h         # Live digital clock & monthly calendar
 │   ├── arch/               # Architecture & hardware abstraction
+│   │   ├── lock.h          # Re-entrant interrupt masking (irq_save, irq_restore)
 │   │   ├── gdt.h           # Global Descriptor Table
 │   │   ├── idt.h           # Interrupt Descriptor Table
 │   │   ├── isr.h           # CPU Exception handlers & registers_t frame
@@ -86,6 +91,10 @@ myos/
     │   ├── editor.c        # Multi-line text buffer, caret & status bar
     │   ├── sheet.c         # 6x10 spreadsheet, formula parser (=SUM, =AVG)
     │   └── clock.c         # Digital clock, uptime & Sakamoto calendar
+    ├── proc/
+    │   ├── task.c          # Task lifecycle, 8 KB stack forging, idle & boot tasks
+    │   ├── scheduler.c     # Preemptive round-robin, sleeping queue & zombie reaper
+    │   └── switch.asm      # switch_context assembly routine & trampoline
     ├── arch/
     │   ├── gdt.c / gdt_flush.asm   # GDT setup and far jump reload
     │   ├── idt.c                   # IDT setup and lidt
@@ -164,3 +173,5 @@ make deploy
 - **`[F8]`**: Heap Growth Test (allocates 200 KB across 10 blocks of 20 KB to force expansion past 64 KB, validates pattern integrity, verifies PMM frame consumption, checks page table mappings, tests reverse-order `kfree` coalescing, and verifies 100 MB oversize rejection)
 - **`[F9]`**: Mouse Paint Demo (launches interactive 1024x768x32 graphics paint demo with 3 MB off-screen back buffer, Bresenham line painting, palette selection, clear button, software arrow cursor with save-under buffer, and ESC key return)
 - **`[F10]`**: Desktop Window Manager & Productivity Apps (launches full graphical windowed desktop environment featuring Start Menu, desktop shortcut icons, and 4 productivity apps: Calculator, Multi-Line Text Editor, Mini Spreadsheet with formula engine, and Real-Time Clock & Calendar, alongside the System Monitor and About dialogs, with title bar dragging clamped to screen bounds and ESC/Shutdown exit)
+- **`[F11]`**: Spawn Compute Worker Task (dynamically creates and enqueues a multi-second concurrent background worker task demonstrating time-slice preemption, timed sleep `task_sleep_ms`, and clean zombie stack deallocation upon exit)
+- **`[F12]`**: Process & Task Table Dump (prints formatted `ps` process table containing PID, State, cumulative timer ticks, stack size, and task name to COM1 serial and active screen)

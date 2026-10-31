@@ -278,6 +278,65 @@ In Milestone 6, productivity applications run as cooperative in-kernel tasks in 
 - `on_click`: Dispatches mouse clicks inside the client canvas (cell selection in Spreadsheet, text cursor positioning in Editor).
 - `on_close`: Safely tears down application resources, clears window pointers, and informs the Z-order compositor.
 
+---
+
+## 9. Layer 7 — Processes & Preemptive Scheduler Architecture
+
+Milestone 7 transitions the operating system from a single-threaded kernel loop into a preemptive multitasking system.
+
+```text
++-----------------------------------------------------------------------------------+
+|                        Processes & Preemptive Scheduler Layer                     |
++-----------------------------------------------------------------------------------+
+|  Synchronization Primitives (arch/lock.h):                                        |
+|    - irq_save(): Atomically pushes EFLAGS, clears IF (CLI), returns saved flags   |
+|    - irq_restore(flags): Restores original EFLAGS (restoring IF state)            |
+|    - Re-entrant mutual exclusion for scheduler queues, allocators, and console   |
++-----------------------------------------------------------------------------------+
+|  Task Management (proc/task.c, include/proc/task.h):                              |
+|    - Task Control Block (TCB): PID, state, saved ESP, ticks_run, time_slice       |
+|    - Dedicated 8 KB Stacks: Allocated from heap, 16-byte aligned                  |
+|    - Initial Forged Stack: Pops registers and 'ret' jumps to task_entry_trampoline|
+|    - System Tasks: PID 0 (Idle hlt task), PID 1 (Main/Desktop), PID 2 (Monitor)   |
+|    - Dynamic Tasks: Created on demand via task_create(name, entry, arg)           |
++-----------------------------------------------------------------------------------+
+|  Assembly Context Switch & Trampoline (proc/switch.asm):                          |
+|    - switch_context(&old_esp, new_esp): Saves/restores eflags, ebp, edi, esi, ebx|
+|    - Atomic stack swap: mov [old_esp], esp; mov esp, [new_esp]                    |
+|    - task_entry_trampoline: Executes 'sti', invokes entry(arg), calls task_exit() |
++-----------------------------------------------------------------------------------+
+|  Preemptive Round-Robin Scheduler (proc/scheduler.c, include/proc/scheduler.h):   |
+|    - FIFO Ready Queue: Runnable tasks executed round-robin                        |
+|    - Time Slice: 10 PIT timer ticks (100 ms at 100 Hz frequency)                  |
+|    - Timer Preemption: PIT IRQ0 decrements slice and invokes schedule()           |
+|    - Early PIC EOI: pic_send_eoi(irq) issued BEFORE switch_context                |
+|    - Timed Sleep Queue: task_sleep_ms(ms) suspended until target tick arrives     |
+|    - Automatic Zombie Reaper: Frees 8 KB stack and TCB when task finishes         |
+|    - Inspection: scheduler_dump_tasks() outputs full ps table to serial / screen  |
++-----------------------------------------------------------------------------------+
+```
+
+### Multitasking State Machine:
+```text
+  task_create()
+       |
+       v
+   [ READY ] <--------- (Time slice expired / task_yield) ---------+
+       |                                                           |
+       | pick_next() & switch_context()                            |
+       v                                                           |
+  [ RUNNING ] -----------------------------------------------------+
+       |                                                           ^
+       | task_sleep_ms(ms)                                         | Timer ticks >= wake_tick
+       v                                                           |
+  [ SLEEPING ] ----------------------------------------------------+
+       |
+       | Task returns / task_exit()
+       v
+   [ ZOMBIE ] ---> scheduler_cleanup_zombies() ---> [ Memory Freed ]
+```
+
+
 
 
 
