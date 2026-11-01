@@ -78,7 +78,7 @@ if ($SourceIso -and (Test-Path $SourceIso)) {
 Write-Host "[RUN] Starting VirtualBox VM '$VmName'..."
 $started = $false
 for ($attempt = 1; $attempt -le 5; $attempt++) {
-    & $VBoxManage startvm $VmName
+    & $VBoxManage startvm $VmName --type gui
     if ($LASTEXITCODE -eq 0) {
         $started = $true
         Write-Host "[RUN] VM started successfully."

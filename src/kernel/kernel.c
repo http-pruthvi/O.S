@@ -606,6 +606,9 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
         vga_put_at(112, 0, clock_buf, 0x1F);
     }
 
+    /* Auto-launch graphical Desktop Environment with Friday AI */
+    desktop_run();
+
     uint32_t last_serial_uptime = 0;
 
     /* Interactive Console Loop */
