@@ -20,6 +20,18 @@ import sys
 import time
 import select
 
+# Ensure UTF-8 I/O encoding on Windows consoles
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+if hasattr(sys.stdin, "reconfigure"):
+    try:
+        sys.stdin.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 # ---------------------------------------------------------------------------
 # Optional voice dependencies — graceful fallback if not installed
 # ---------------------------------------------------------------------------
