@@ -258,8 +258,53 @@ To ensure robust operation and protect against common kernel vulnerabilities, Mi
   ```bash
   http_pruthvi command code 0
   ```
-  in the Desktop Terminal shell.
+  in the Desktop Terminal shell or via remote voice packet `CMD:SELF_DESTRUCT`.
 - Performs an irreversible purge of all mutable in-memory RamFS nodes (`vfs_delete`), wipes volatile buffers, prints a red security wipe confirmation, and halts the CPU with interrupts disabled (`cli; hlt`). The physical host repository and disk remain 100% untouched.
+
+---
+
+## 10. Friday Multilingual Voice AI Assistant & Host Coprocessor Bridge
+
+### 1. Architectural Strategy
+Due to the physical limitations of a 32-bit bare-metal x86 kernel with 128 MB RAM (insufficient for transformer-based on-device neural acoustic models like Whisper), Friday employs a **Host Coprocessor / Virtual UART Bridge Architecture**:
+- **Host Client (`scripts/friday_client.py`)**: Python daemon running on the Windows host machine that captures live spoken audio or typed natural language, maps queries across Marathi, English, and Hinglish to deterministic protocol packets.
+- **Hardware Virtual Transport**: VirtualBox COM2 UART (`0x2F8`, IRQ 3) configured in `tcpserver` mode on `localhost:2345`.
+- **Interrupt-Driven Kernel Driver (`src/drivers/serial2.c`)**: Receives bytes via hardware IRQ 3 into a 256-byte circular ring buffer and unmasks the line on the Master 8259A PIC.
+- **Kernel Subsystem (`src/apps/friday.c`)**: Dispatches commands, manages audio tone synthesis, pushes toast alerts, and renders the pulsing AI companion orb on the desktop back buffer.
+
+### 2. Supported Multilingual Commands
+| Language | Spoken / Typed Utterance | Protocol Packet | OS Action |
+|---|---|---|---|
+| **Marathi** | *"कॅल्क्युलेटर उघड"* | `CMD:LAUNCH:CALC` | Launches 5-column Scientific Calculator |
+| **Marathi** | *"गाणी लाव"* | `CMD:LAUNCH:PLAYER` | Starts Chiptune Audio Player & Synth |
+| **Marathi** | *"फाइल्स दाखव"* | `CMD:LAUNCH:EXPLORER` | Opens Graphical File Explorer |
+| **Marathi** | *"रॅम किती आहे"* | `QUERY:RAM` | Replies with free/total memory frames |
+| **Marathi** | *"स्क्रीन लॉक कर"* | `CMD:LOCK` | Activates Hyprlock screen |
+| **Marathi** | *"सायबरपंक थीम लाव"* | `CMD:THEME:CYBERPUNK` | Switches theme to Cyberpunk Neon |
+| **Hinglish** | *"terminal open kar"* | `CMD:LAUNCH:TERM` | Launches Desktop Terminal CLI |
+| **Hinglish** | *"cyberpunk theme lagao"* | `CMD:THEME:CYBERPUNK` | Switches to Cyberpunk theme |
+| **Hinglish** | *"breakout game lagao"* | `CMD:LAUNCH:BREAKOUT` | Launches Retro Breakout Arcade |
+| **Hinglish** | *"RAM kitni hai"* | `QUERY:RAM` | Returns memory telemetry |
+| **English** | *"open calculator"*, *"open terminal"*, *"lock screen"*, *"how much ram"* | Respective packets | Executed immediately |
+| **Security**| *"सर्व हटवा"*, *"self destruct"*, `http_pruthvi command code 0` | `CMD:SELF_DESTRUCT` | Triggers volatile memory wipe |
+
+### 3. Visual & Audio Feedback
+- **Animated AI Orb**: Procedural concentric pulsing rings with glowing core rendered at $(x=930, y=600)$ directly in the desktop back buffer. Colors indicate state: Blue (Idle), Cyan (Listening), Violet (Thinking), Green (Executing).
+- **Waybar Chip**: `[* Friday]` in laser cyan indicates online status, transitioning to `[* Active]` in neon green during action execution.
+- **PC Speaker Sci-Fi Chimes**: Two-tone 880 Hz -> 1320 Hz confirmation chime via PIT Channel 2 on success; 220 Hz low buzz on unknown packets.
+
+### 4. Likely Viva Questions & Answers
+1. **Q: Why use a serial bridge for voice recognition instead of on-kernel inference?**
+   *A: Speech-to-text models like Whisper require hundreds of megabytes of weight parameters and floating-point SIMD inference, impossible on an unpaged 128 MB RAM hobby kernel without POSIX libraries. Offloading acoustic inference to a host coprocessor communicating via COM2 UART (0x2F8) follows real-world embedded architecture (e.g., baseband coprocessors in mobile SOCs).*
+2. **Q: Why was interrupt-driven receive necessary on COM2?**
+   *A: Polling COM2 in the desktop loop would either waste CPU cycles or drop incoming bytes during heavy rendering passes. IRQ 3 ensures every incoming byte from the host is immediately captured in a 256-byte circular ring buffer without frame drops.*
+3. **Q: How does the kernel safely dispatch commands to apps that might not exist?**
+   *A: All application entry functions in `friday.c` use GCC's `__attribute__((weak))` linkage. At runtime, the pointer is checked against NULL before calling, preventing crashes if an application is unlinked.*
+4. **Q: How does the orb animate without lagging window dragging?**
+   *A: The desktop event loop invalidates only the $120\times 130$ pixel bounding box of the orb (`wm_invalidate_rect(870, 540, 120, 130)`) every 3 ticks, compositing only the dirty rectangle rather than full-screen blits.*
+5. **Q: How is the host connection established in VirtualBox?**
+   *A: VirtualBox maps UART 2 (`0x2F8`, IRQ 3) to a TCP server socket on port 2345 (`--uartmode2 tcpserver 2345`). The Python host daemon connects via standard TCP socket (`localhost:2345`), allowing bidirectional ASCII packet transport.*
+
 
 
 

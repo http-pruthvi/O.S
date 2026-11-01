@@ -43,6 +43,7 @@ myos/
 │   │   ├── task.h          # Task Control Block (TCB), states & task API
 │   │   └── scheduler.h     # Preemptive round-robin scheduler & queues
 │   ├── apps/               # Desktop Productivity Applications (Milestone 6)
+│   │   ├── friday.h        # Friday Multilingual AI Assistant subsystem & animated orb
 │   │   ├── launcher.h      # Desktop launcher, shortcut icons & Start menu
 │   │   ├── calc.h          # Scientific 5-column desktop calculator (arithmetic, sqrt, x^2, 1/x, %)
 │   │   ├── editor.h        # Multi-line text editor with VFS save/load
@@ -60,6 +61,7 @@ myos/
 │   │   └── irq.h           # Hardware IRQ dispatch table
 │   ├── drivers/
 │   │   ├── serial.h        # COM1 UART 16550 serial driver
+│   │   ├── serial2.h       # COM2 UART interrupt-driven driver (0x2F8, IRQ 3, ring buffer)
 │   │   ├── vga.h           # VGA output driver (console routing)
 │   │   ├── timer.h         # PIT 8254 timer driver (100 Hz, uptime)
 │   │   ├── keyboard.h      # PS/2 keyboard driver (Scancode Set 1)
@@ -102,6 +104,7 @@ myos/
 │           └── grub.cfg    # GRUB boot menu entry configuration
 └── src/                    # Implementation source code
     ├── apps/
+    │   ├── friday.c        # Friday AI Assistant command dispatcher, PC speaker chimes, animated orb
     │   ├── launcher.c      # Desktop shortcut icons & Start menu popup
     │   ├── calc.c          # 5-column Scientific Calculator & 32-bit arithmetic
     │   ├── editor.c        # Multi-line text buffer, caret, status bar & VFS save/load
@@ -139,6 +142,7 @@ myos/
     │   └── boot.asm        # Multiboot header, 16 KB stack, _start entry
     ├── drivers/
     │   ├── serial.c        # COM1 driver (115200 8N1, FIFO enabled)
+    │   ├── serial2.c       # COM2 driver (0x2F8, IRQ 3, RX ring buffer, TX blocking)
     │   ├── vga.c           # VGA driver (cursor, scrolling, vga_put_at)
     │   ├── timer.c         # PIT timer (100 Hz, uptime screen clock)
     │   ├── keyboard.c      # PS/2 keyboard (scancode set 1, ring buffer)
@@ -227,3 +231,37 @@ Once inside the Desktop Window Manager:
 - **`[F11]`**: Spawn Concurrent Background Worker Task
 - **`[F12]`**: Open Graphical Task Manager (process list, memory stats, task kill)
 - **`[ESC]`**: Clean Exit from Desktop back to Framebuffer Console
+
+---
+
+## Friday AI Multilingual Voice Assistant & Host Coprocessor Bridge
+
+Friday OS features an embedded AI assistant subsystem named **"Friday"** that provides multilingual voice and text control over the operating system.
+
+### Architecture Overview
+- **Host Bridge Daemon**: Runs on Windows host (`scripts/friday_client.py`), capturing natural language voice/text from microphone or keyboard, mapping diverse queries into compact protocol packets.
+- **COM2 Hardware Transport**: VirtualBox COM2 UART (`0x2F8`, IRQ 3) acts as a high-speed virtual serial pipeline exposed via TCP socket server on `localhost:2345`.
+- **Interrupt-Driven Kernel Driver**: `src/drivers/serial2.c` buffers incoming packets in a 256-byte circular ring buffer via IRQ 3.
+- **Kernel Dispatcher & Animated AI Orb**: `src/apps/friday.c` parses packets, executes OS actions (app launches, theme switching, security locking, RAM queries), produces PC speaker confirmation chimes, shows toast notifications, and renders an animated glowing AI orb on the desktop back buffer.
+
+### Multilingual Natural Language Support
+Friday recognizes commands across three languages:
+1. **Marathi (मराठी)**:
+   - *"कॅल्क्युलेटर उघड"* -> Launches Scientific Calculator
+   - *"गाणी लाव"* -> Plays Chiptune Media Player
+   - *"फाइल्स दाखव"* -> Opens Graphical File Explorer
+   - *"रॅम किती आहे"* -> Queries physical memory manager
+   - *"स्क्रीन लॉक कर"* -> Activates Hyprlock screen lock
+   - *"सायबरपंक थीम लाव"* -> Switches to Cyberpunk Neon theme
+2. **Hinglish**:
+   - *"terminal open kar"* -> Launches Terminal CLI
+   - *"cyberpunk theme lagao"* -> Switches to Cyberpunk theme
+   - *"breakout game lagao"* -> Launches Breakout arcade
+   - *"music bajao"* -> Starts audio synthesizer
+   - *"RAM kitni hai"* -> Telemetry query
+3. **English**:
+   - *"open calculator"*, *"open terminal"*, *"play breakout"*, *"lock screen"*, *"how much ram"*
+
+### Emergency Remote Self-Destruct
+- Initiated via: `http_pruthvi command code 0` or voice command *"सर्व हटवा"* / *"self destruct"*.
+- Wipes volatile RAM structures, alerts user, and terminates cleanly.

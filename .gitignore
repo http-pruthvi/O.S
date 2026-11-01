@@ -4,5 +4,7 @@ build/
 *.bin
 *.iso
 *.log
+__pycache__/
+*.pyc
 .agents/
 .planning/

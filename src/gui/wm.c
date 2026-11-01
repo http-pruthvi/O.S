@@ -8,6 +8,7 @@
 #include "gui/notification.h"
 #include "gui/lockscreen.h"
 #include "apps/launcher.h"
+#include "apps/friday.h"
 #include "gfx/gfx.h"
 #include "gfx/font.h"
 #include "drivers/timer.h"
@@ -356,6 +357,9 @@ void wm_invalidate_rect(int x, int y, int w, int h) {
         }
         curr = curr->prev;
     }
+
+    /* 2.5 Composite Friday AI Companion Orb */
+    friday_render_orb(backbuf, WM_SCREEN_WIDTH, WM_SCREEN_HEIGHT);
 
     /* 3. Composite Top Waybar Status Bar */
     waybar_render(x, y, w, h);

@@ -18,6 +18,7 @@
 #include "apps/photos.h"
 #include "apps/player.h"
 #include "apps/breakout.h"
+#include "apps/friday.h"
 #include "gui/startmenu.h"
 #include "gui/notification.h"
 #include "gfx/gfx.h"
@@ -304,6 +305,9 @@ void desktop_run(void) {
     /* Pre-seed sample PPM images into RamFS */
     photos_preseed_images();
 
+    /* Initialize Friday AI Assistant Subsystem */
+    friday_init();
+
     /* Push Welcome Toast Notification */
     notification_push(NOTIFY_SUCCESS, "MyOS Desktop 2.0", "System ready. Click [ MyOS ] or press F1!");
 
@@ -437,6 +441,15 @@ void desktop_run(void) {
                 notification_tick();
                 player_tick();
                 breakout_tick();
+                friday_tick();
+            }
+
+            /* Periodically animate Friday AI Orb (every ~3 ticks) */
+            static uint32_t s_orb_anim_counter = 0;
+            s_orb_anim_counter += delta;
+            if (s_orb_anim_counter >= 3) {
+                s_orb_anim_counter = 0;
+                wm_invalidate_rect(870, 540, 120, 130);
             }
         }
 

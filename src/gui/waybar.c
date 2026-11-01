@@ -3,6 +3,8 @@
 #include "gui/startmenu.h"
 #include "gui/lockscreen.h"
 #include "apps/clock.h"
+#include "apps/friday.h"
+#include "gui/notification.h"
 #include "gfx/gfx.h"
 #include "gfx/font.h"
 #include "drivers/timer.h"
@@ -101,15 +103,27 @@ void waybar_render(int clip_x, int clip_y, int clip_w, int clip_h) {
     gfx_draw_rect(start_x, 4, start_w, 20, bar_border);
     gfx_draw_string(start_x + 10, 6, "MyOS", accent_pri, bar_bg, true);
 
+    /* 3.5. Friday AI Assistant Status Chip */
+    int friday_x = 200;
+    int friday_w = 98;
+    bool f_online = friday_is_online();
+    friday_state_t f_state = friday_get_state();
+    uint32_t f_color = f_online ? ((f_state == FRIDAY_EXECUTING) ? accent_sec : 0x0094E2D5) : text_mut;
+    const char* f_label = f_online ? ((f_state == FRIDAY_EXECUTING) ? "* Active" : "* Friday") : "* Offline";
+
+    gfx_fill_rect(friday_x, 4, friday_w, 20, bar_bg);
+    gfx_draw_rect(friday_x, 4, friday_w, 20, f_color);
+    gfx_draw_string(friday_x + 8, 6, f_label, f_color, bar_bg, true);
+
     /* 4. Centered Brand Chip */
-    int center_w = 260;
+    int center_w = 280;
     int center_x = (1024 - center_w) / 2;
     int center_y = 4;
     int center_h = 20;
 
     gfx_fill_rect(center_x, center_y, center_w, center_h, bar_bg);
     gfx_draw_rect(center_x, center_y, center_w, center_h, text_mut);
-    gfx_draw_string(center_x + 16, center_y + 2, "MyOS • x86 Protected Mode", text_pri, bar_bg, true);
+    gfx_draw_string(center_x + 12, center_y + 2, "Friday OS | x86-32 Protected Mode", text_pri, bar_bg, true);
 
     /* 4. Right Telemetry Chips */
     /* A. RAM Chip */
@@ -186,6 +200,12 @@ bool waybar_handle_mouse(int mx, int my, bool left_pressed) {
     /* Start Menu Chip Click (x: 124 to 194) */
     if (mx >= 124 && mx < 194 && my >= 4 && my < 24) {
         startmenu_toggle();
+        return true;
+    }
+
+    /* Friday AI Chip Click (x: 200 to 298) */
+    if (mx >= 200 && mx < 298 && my >= 4 && my < 24) {
+        notification_push(NOTIFY_INFO, "Friday AI", "Bridge listening on COM2:2345");
         return true;
     }
 
