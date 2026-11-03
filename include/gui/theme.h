@@ -14,7 +14,8 @@
  */
 
 typedef enum theme_id {
-    THEME_CATPPUCCIN_MOCHA = 0, /* Default modern pastel dark theme */
+    THEME_WINDOWS_11 = 0,        /* Modern Windows 11 Fluent Dark (Clean default) */
+    THEME_CATPPUCCIN_MOCHA,      /* Modern pastel dark theme */
     THEME_TOKYO_NIGHT,           /* Deep navy with cyan and purple neon */
     THEME_CYBERPUNK,             /* Dark abyss with magenta and laser cyan */
     THEME_NORD,                  /* Scandinavian arctic blue and cool grays */

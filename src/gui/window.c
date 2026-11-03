@@ -45,7 +45,8 @@ window_t* window_create(int x, int y, int width, int height, const char* title, 
     win->client_height = height - WINDOW_TITLE_BAR_HEIGHT - WINDOW_BORDER_WIDTH;
 
     win->flags = flags | WINDOW_FLAG_VISIBLE;
-    win->bg_color = WIN_DEFAULT_CLIENT_BG;
+    const theme_t* init_th = theme_get_current();
+    win->bg_color = init_th ? init_th->bg_window_client : 0x001F1F1F;
     win->next = NULL;
     win->prev = NULL;
     win->first_widget = NULL;
@@ -206,15 +207,21 @@ window_hit_t window_hit_test(window_t* win, int sx, int sy) {
         return WINDOW_HIT_NONE;
     }
 
-    /* Title bar area (top 24px) */
+    /* Title bar area (top 28px) */
     if (sy < win->y + WINDOW_TITLE_BAR_HEIGHT) {
-        /* Check close button: positioned on right edge with 3px margin */
-        int btn_x = win->x + win->width - WINDOW_CLOSE_BTN_SIZE - 4;
-        int btn_y = win->y + (WINDOW_TITLE_BAR_HEIGHT - WINDOW_CLOSE_BTN_SIZE) / 2;
-
-        if (sx >= btn_x && sx < btn_x + WINDOW_CLOSE_BTN_SIZE &&
-            sy >= btn_y && sy < btn_y + WINDOW_CLOSE_BTN_SIZE) {
+        /* Windows 11 Caption Controls:
+         * Close button: rightmost 38px
+         * Maximize button: 34px
+         * Minimize button: 34px
+         */
+        if (sx >= win->x + win->width - 38 && sx < win->x + win->width) {
             return WINDOW_HIT_CLOSE_BUTTON;
+        }
+        if (sx >= win->x + win->width - 72 && sx < win->x + win->width - 38) {
+            return WINDOW_HIT_MAX_BUTTON;
+        }
+        if (sx >= win->x + win->width - 106 && sx < win->x + win->width - 72) {
+            return WINDOW_HIT_MIN_BUTTON;
         }
 
         return WINDOW_HIT_TITLE_BAR;
@@ -231,7 +238,7 @@ window_hit_t window_hit_test(window_t* win, int sx, int sy) {
 
 /*
  * window_render:
- * Composites the window (frame, title bar, close button, client canvas)
+ * Composites the window (frame, title bar, caption controls, client canvas)
  * into the destination screen back buffer with clipping.
  */
 void window_render(window_t* win, uint32_t* screen_buffer, uint32_t screen_pitch_dwords,
@@ -259,28 +266,26 @@ void window_render(window_t* win, uint32_t* screen_buffer, uint32_t screen_pitch
     uint32_t title_fg     = focused ? (th ? th->title_active_fg : WIN_TITLE_TXT_ACTIVE)
                                     : (th ? th->title_inactive_fg : WIN_TITLE_TXT_INACTIVE);
 
-    /* 1. Draw outer 2px decorative border */
+    /* 1. Draw outer 1px clean border */
     for (int r = win->y; r < win->y + win->height; r++) {
         if (r < clip_y || r >= clip_b) continue;
 
-        bool is_tb_edge = (r < win->y + WINDOW_BORDER_WIDTH) ||
-                          (r >= win->y + win->height - WINDOW_BORDER_WIDTH);
+        bool is_tb_edge = (r == win->y) || (r == win->y + win->height - 1);
 
         for (int c = win->x; c < win->x + win->width; c++) {
             if (c < clip_x || c >= clip_r) continue;
 
-            if (is_tb_edge || (c < win->x + WINDOW_BORDER_WIDTH) ||
-                (c >= win->x + win->width - WINDOW_BORDER_WIDTH)) {
+            if (is_tb_edge || (c == win->x) || (c == win->x + win->width - 1)) {
                 screen_buffer[r * screen_pitch_dwords + c] = border_color;
             }
         }
     }
 
-    /* 2. Draw Title Bar Background (inside 2px border) */
-    int tb_start_y = win->y + WINDOW_BORDER_WIDTH;
+    /* 2. Draw Title Bar Background (inside 1px border) */
+    int tb_start_y = win->y + 1;
     int tb_end_y   = win->y + WINDOW_TITLE_BAR_HEIGHT;
-    int tb_start_x = win->x + WINDOW_BORDER_WIDTH;
-    int tb_end_x   = win->x + win->width - WINDOW_BORDER_WIDTH;
+    int tb_start_x = win->x + 1;
+    int tb_end_x   = win->x + win->width - 1;
 
     for (int r = tb_start_y; r < tb_end_y; r++) {
         if (r < clip_y || r >= clip_b) continue;
@@ -291,11 +296,23 @@ void window_render(window_t* win, uint32_t* screen_buffer, uint32_t screen_pitch
         }
     }
 
+    /* Subtle separator line under title bar */
+    int sep_y = win->y + WINDOW_TITLE_BAR_HEIGHT - 1;
+    if (sep_y >= clip_y && sep_y < clip_b) {
+        uint32_t* line = &screen_buffer[sep_y * screen_pitch_dwords];
+        uint32_t sep_col = focused ? (th ? th->border_active : 0x000078D4) : 0x002B2B2B;
+        for (int c = tb_start_x; c < tb_end_x; c++) {
+            if (c >= clip_x && c < clip_r) {
+                line[c] = sep_col;
+            }
+        }
+    }
+
     /* 3. Draw Title Text */
-    int title_draw_x = win->x + WINDOW_BORDER_WIDTH + 6;
-    int title_draw_y = win->y + 4;
+    int title_draw_x = win->x + 10;
+    int title_draw_y = win->y + (WINDOW_TITLE_BAR_HEIGHT - FONT_GLYPH_HEIGHT) / 2;
     const char* t = win->title;
-    while (*t && title_draw_x + FONT_GLYPH_WIDTH < tb_end_x - 26) {
+    while (*t && title_draw_x + FONT_GLYPH_WIDTH < win->x + win->width - 115) {
         const uint8_t* glyph = font_get_glyph(*t++);
         for (uint32_t gr = 0; gr < FONT_GLYPH_HEIGHT; gr++) {
             int py = title_draw_y + (int)gr;
@@ -314,41 +331,69 @@ void window_render(window_t* win, uint32_t* screen_buffer, uint32_t screen_pitch
         title_draw_x += FONT_GLYPH_WIDTH;
     }
 
-    /* 4. Draw Close Button [X] */
-    int btn_x = win->x + win->width - WINDOW_CLOSE_BTN_SIZE - 4;
-    int btn_y = win->y + (WINDOW_TITLE_BAR_HEIGHT - WINDOW_CLOSE_BTN_SIZE) / 2;
+    /* 4. Draw Windows 11 Caption Buttons */
+    int btn_cy = win->y + WINDOW_TITLE_BAR_HEIGHT / 2;
 
-    for (int r = btn_y; r < btn_y + WINDOW_CLOSE_BTN_SIZE; r++) {
-        if (r < clip_y || r >= clip_b) continue;
-        uint32_t* line = &screen_buffer[r * screen_pitch_dwords];
-        for (int c = btn_x; c < btn_x + WINDOW_CLOSE_BTN_SIZE; c++) {
-            if (c < clip_x || c >= clip_r) continue;
-
-            if (r == btn_y || r == btn_y + WINDOW_CLOSE_BTN_SIZE - 1 ||
-                c == btn_x || c == btn_x + WINDOW_CLOSE_BTN_SIZE - 1) {
-                line[c] = WIN_CLOSE_BTN_BORDER;
-            } else {
-                line[c] = WIN_CLOSE_BTN_BG;
+    /* Minimize [ — ] button */
+    int min_btn_x = win->x + win->width - 106;
+    int min_btn_w = 34;
+    int min_line_y = btn_cy + 3;
+    if (min_line_y >= clip_y && min_line_y < clip_b) {
+        uint32_t* line = &screen_buffer[min_line_y * screen_pitch_dwords];
+        int min_line_x = min_btn_x + (min_btn_w - 10) / 2;
+        for (int c = min_line_x; c < min_line_x + 10; c++) {
+            if (c >= clip_x && c < clip_r) {
+                line[c] = title_fg;
             }
         }
     }
 
-    /* Draw 'X' glyph inside close button */
-    int icon_x = btn_x + (WINDOW_CLOSE_BTN_SIZE - FONT_GLYPH_WIDTH) / 2;
-    int icon_y = btn_y + (WINDOW_CLOSE_BTN_SIZE - FONT_GLYPH_HEIGHT) / 2;
-    const uint8_t* x_glyph = font_get_glyph('x');
-    for (uint32_t gr = 0; gr < FONT_GLYPH_HEIGHT; gr++) {
-        int py = icon_y + (int)gr;
-        if (py < clip_y || py >= clip_b) continue;
-
-        uint8_t bits = x_glyph[gr];
-        for (uint32_t gc = 0; gc < FONT_GLYPH_WIDTH; gc++) {
-            int px = icon_x + (int)gc;
-            if (px < clip_x || px >= clip_r) continue;
-
-            if (bits & (0x80 >> gc)) {
-                screen_buffer[py * screen_pitch_dwords + px] = WIN_CLOSE_BTN_TXT;
+    /* Maximize [ □ ] button */
+    int max_btn_x = win->x + win->width - 72;
+    int max_btn_w = 34;
+    int max_box_x = max_btn_x + (max_btn_w - 10) / 2;
+    int max_box_y = btn_cy - 5;
+    for (int r = max_box_y; r < max_box_y + 10; r++) {
+        if (r < clip_y || r >= clip_b) continue;
+        uint32_t* line = &screen_buffer[r * screen_pitch_dwords];
+        for (int c = max_box_x; c < max_box_x + 10; c++) {
+            if (c < clip_x || c >= clip_r) continue;
+            if (r == max_box_y || r == max_box_y + 9 || c == max_box_x || c == max_box_x + 9) {
+                line[c] = title_fg;
             }
+        }
+    }
+
+    /* Close [ ✕ ] button */
+    int close_btn_x = win->x + win->width - 38;
+    int close_btn_w = 37;
+    int close_btn_y = win->y + 1;
+    int close_btn_h = WINDOW_TITLE_BAR_HEIGHT - 2;
+
+    /* Close button hover/active background (Windows 11 red when focused) */
+    uint32_t close_bg = focused ? (th ? th->btn_close_bg : 0x00C42B1C) : title_bg;
+    for (int r = close_btn_y; r < close_btn_y + close_btn_h; r++) {
+        if (r < clip_y || r >= clip_b) continue;
+        uint32_t* line = &screen_buffer[r * screen_pitch_dwords];
+        for (int c = close_btn_x; c < close_btn_x + close_btn_w; c++) {
+            if (c < clip_x || c >= clip_r) continue;
+            line[c] = close_bg;
+        }
+    }
+
+    /* Crisp Vector Diagonal X */
+    int close_cx = close_btn_x + close_btn_w / 2;
+    int close_cy = close_btn_y + close_btn_h / 2;
+    for (int d = -4; d <= 4; d++) {
+        int py = close_cy + d;
+        if (py < clip_y || py >= clip_b) continue;
+        int px1 = close_cx + d;
+        int px2 = close_cx - d;
+        if (px1 >= clip_x && px1 < clip_r) {
+            screen_buffer[py * screen_pitch_dwords + px1] = 0x00FFFFFF;
+        }
+        if (px2 >= clip_x && px2 < clip_r) {
+            screen_buffer[py * screen_pitch_dwords + px2] = 0x00FFFFFF;
         }
     }
 

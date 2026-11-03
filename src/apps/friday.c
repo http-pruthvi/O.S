@@ -193,7 +193,12 @@ static void friday_dispatch_command(char* cmd) {
         friday_chime_ok();
     }
     /* 2. Desktop Theme Presets */
-    else if (strcmp(cmd, "CMD:THEME:CATPPUCCIN") == 0) {
+    else if (strcmp(cmd, "CMD:THEME:WINDOWS") == 0) {
+        theme_set(THEME_WINDOWS_11);
+        wm_redraw_all();
+        notification_push(NOTIFY_SUCCESS, "Friday AI", "Theme: Windows 11 Fluent");
+        friday_chime_ok();
+    } else if (strcmp(cmd, "CMD:THEME:CATPPUCCIN") == 0) {
         theme_set(THEME_CATPPUCCIN_MOCHA);
         wm_redraw_all();
         notification_push(NOTIFY_SUCCESS, "Friday AI", "Theme: Catppuccin Mocha");

@@ -166,11 +166,11 @@ static void setup_showcase_windows(void) {
                                    WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE);
     if (win1) {
         /* Title and description labels */
-        widget_t* lbl_title = widget_create_label(20, 16, 380, 20, "Interactive GUI Controls", 0x001F487E);
+        widget_t* lbl_title = widget_create_label(20, 16, 380, 20, "Interactive GUI Controls", 0x0060A5FA);
         widget_add_to_window(win1, lbl_title);
 
         /* Counter Section */
-        lbl_counter = widget_create_label(20, 45, 380, 20, "Counter Value: 0", 0x00000000);
+        lbl_counter = widget_create_label(20, 45, 380, 20, "Counter Value: 0", 0x00FFFFFF);
         widget_add_to_window(win1, lbl_counter);
 
         widget_t* btn_dec = widget_create_button(20, 75, 110, 30, "[-] Dec", on_btn_dec, NULL);
@@ -183,21 +183,21 @@ static void setup_showcase_windows(void) {
         widget_add_to_window(win1, btn_rst);
 
         /* Text Input Section */
-        widget_t* lbl_prompt = widget_create_label(20, 130, 380, 20, "Type something below:", 0x00303030);
+        widget_t* lbl_prompt = widget_create_label(20, 130, 380, 20, "Type something below:", 0x00E0E0E0);
         widget_add_to_window(win1, lbl_prompt);
 
         widget_t* txt_input = widget_create_textbox(20, 155, 360, 32, "Click & type...", 40);
         txt_input->on_change = on_textbox_changed;
         widget_add_to_window(win1, txt_input);
 
-        lbl_echo = widget_create_label(20, 205, 380, 20, "Echo: Click & type...", 0x002B4C7E);
+        lbl_echo = widget_create_label(20, 205, 380, 20, "Echo: Click & type...", 0x0060A5FA);
         widget_add_to_window(win1, lbl_echo);
 
         /* Status info */
-        widget_t* lbl_hint = widget_create_label(20, 260, 380, 20, "Tip: Drag title bar to move window!", 0x00707070);
+        widget_t* lbl_hint = widget_create_label(20, 260, 380, 20, "Tip: Drag title bar to move window!", 0x009E9E9E);
         widget_add_to_window(win1, lbl_hint);
 
-        widget_t* lbl_hint2 = widget_create_label(20, 285, 380, 20, "Press [ESC] anytime to exit to console.", 0x00707070);
+        widget_t* lbl_hint2 = widget_create_label(20, 285, 380, 20, "Press [ESC] anytime to exit to console.", 0x009E9E9E);
         widget_add_to_window(win1, lbl_hint2);
 
         wm_add_window(win1);
@@ -209,19 +209,19 @@ static void setup_showcase_windows(void) {
     window_t* win2 = window_create(540, 100, 420, 340, "System Monitor",
                                    WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE);
     if (win2) {
-        widget_t* lbl_diag = widget_create_label(20, 16, 380, 20, "Hardware & Memory Status", 0x001F487E);
+        widget_t* lbl_diag = widget_create_label(20, 16, 380, 20, "Hardware & Memory Status", 0x0060A5FA);
         widget_add_to_window(win2, lbl_diag);
 
-        widget_t* lbl_ram = widget_create_label(20, 48, 380, 20, "Total RAM: 128 MB (Identity Paged)", 0x00101010);
+        widget_t* lbl_ram = widget_create_label(20, 48, 380, 20, "Total RAM: 128 MB (Identity Paged)", 0x00FFFFFF);
         widget_add_to_window(win2, lbl_ram);
 
         uint32_t free_f = pmm_free_frames();
         char pmm_buf[48] = "PMM Free Frames: ";
         int_to_str((int)free_f, pmm_buf + 17);
-        lbl_pmm_free = widget_create_label(20, 76, 380, 20, pmm_buf, 0x00101010);
+        lbl_pmm_free = widget_create_label(20, 76, 380, 20, pmm_buf, 0x00FFFFFF);
         widget_add_to_window(win2, lbl_pmm_free);
 
-        widget_t* lbl_heap_base = widget_create_label(20, 104, 380, 20, "Heap Virtual Base: 0xD0000000", 0x00101010);
+        widget_t* lbl_heap_base = widget_create_label(20, 104, 380, 20, "Heap Virtual Base: 0xD0000000", 0x00FFFFFF);
         widget_add_to_window(win2, lbl_heap_base);
 
         size_t used_b = 0, free_b = 0, blocks = 0;
@@ -231,10 +231,10 @@ static void setup_showcase_windows(void) {
         int len = 0; while (heap_buf[len]) len++;
         heap_buf[len++] = ' '; heap_buf[len++] = 'K'; heap_buf[len++] = 'B';
         heap_buf[len] = '\0';
-        lbl_heap_used = widget_create_label(20, 132, 380, 20, heap_buf, 0x00101010);
+        lbl_heap_used = widget_create_label(20, 132, 380, 20, heap_buf, 0x00FFFFFF);
         widget_add_to_window(win2, lbl_heap_used);
 
-        widget_t* lbl_res = widget_create_label(20, 160, 380, 20, "Display: 1024x768x32 Linear RGB", 0x00101010);
+        widget_t* lbl_res = widget_create_label(20, 160, 380, 20, "Display: 1024x768x32 Linear RGB", 0x00FFFFFF);
         widget_add_to_window(win2, lbl_res);
 
         uint32_t tasks = task_get_count();
@@ -245,7 +245,7 @@ static void setup_showcase_windows(void) {
         task_buf[tlen++] = 'e'; task_buf[tlen++] = 'e'; task_buf[tlen++] = 'm'; task_buf[tlen++] = 'p';
         task_buf[tlen++] = 't'; task_buf[tlen++] = 'i'; task_buf[tlen++] = 'v'; task_buf[tlen++] = 'e';
         task_buf[tlen++] = ')'; task_buf[tlen] = '\0';
-        lbl_tasks = widget_create_label(20, 188, 380, 20, task_buf, 0x00101010);
+        lbl_tasks = widget_create_label(20, 188, 380, 20, task_buf, 0x00FFFFFF);
         widget_add_to_window(win2, lbl_tasks);
 
         widget_t* btn_refresh = widget_create_button(20, 230, 180, 32, "Refresh Metrics", on_btn_refresh_stats, NULL);
@@ -260,22 +260,22 @@ static void setup_showcase_windows(void) {
     win_about = window_create(280, 180, 440, 270, "About MyOS",
                               WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE);
     if (win_about) {
-        widget_t* lbl_app = widget_create_label(20, 16, 400, 20, "MyOS Desktop Environment v1.0", 0x001F487E);
+        widget_t* lbl_app = widget_create_label(20, 16, 400, 20, "MyOS Desktop Environment v1.0", 0x0060A5FA);
         widget_add_to_window(win_about, lbl_app);
 
-        widget_t* lbl_sub = widget_create_label(20, 42, 400, 20, "B.Tech Final Year Operating System Project", 0x00404040);
+        widget_t* lbl_sub = widget_create_label(20, 42, 400, 20, "B.Tech Final Year Operating System Project", 0x00E0E0E0);
         widget_add_to_window(win_about, lbl_sub);
 
-        widget_t* lbl_d1 = widget_create_label(20, 80, 400, 20, "- Multi-Window Z-Order Compositor", 0x00101010);
+        widget_t* lbl_d1 = widget_create_label(20, 80, 400, 20, "- Multi-Window Z-Order Compositor", 0x00FFFFFF);
         widget_add_to_window(win_about, lbl_d1);
 
-        widget_t* lbl_d2 = widget_create_label(20, 105, 400, 20, "- Reusable Widgets: Buttons, Labels, TextBoxes", 0x00101010);
+        widget_t* lbl_d2 = widget_create_label(20, 105, 400, 20, "- Reusable Widgets: Buttons, Labels, TextBoxes", 0x00FFFFFF);
         widget_add_to_window(win_about, lbl_d2);
 
-        widget_t* lbl_d3 = widget_create_label(20, 130, 400, 20, "- Tear-Free Software Cursor & Save-Under", 0x00101010);
+        widget_t* lbl_d3 = widget_create_label(20, 130, 400, 20, "- Tear-Free Software Cursor & Save-Under", 0x00FFFFFF);
         widget_add_to_window(win_about, lbl_d3);
 
-        widget_t* lbl_d4 = widget_create_label(20, 155, 400, 20, "- Taskbar with Windows Switching & Clock", 0x00101010);
+        widget_t* lbl_d4 = widget_create_label(20, 155, 400, 20, "- Taskbar with Windows Switching & Clock", 0x00FFFFFF);
         widget_add_to_window(win_about, lbl_d4);
 
         widget_t* btn_ok = widget_create_button(160, 195, 120, 32, "Dismiss", on_btn_about_close, NULL);

@@ -219,7 +219,8 @@ void wm_toggle_minimize(window_t* win) {
 
 /*
  * wm_render_taskbar:
- * Draws the bottom 36px taskbar, Start button, window tabs, and uptime clock.
+ * Draws the modern Windows 11 Fluent 40px taskbar, 4-quadrant Start logo,
+ * active indicator pills for running windows, Friday AI status, and clock.
  */
 void wm_render_taskbar(int clip_x, int clip_y, int clip_w, int clip_h) {
     uint32_t* backbuf = gfx_get_backbuffer();
@@ -234,6 +235,10 @@ void wm_render_taskbar(int clip_x, int clip_y, int clip_w, int clip_h) {
         return;
     }
 
+    const theme_t* th = theme_get_current();
+    uint32_t tb_bg = th ? th->bg_panel : 0x001C1C1C;
+    uint32_t tb_bd = 0x002E2E2E;
+
     /* 1. Fill Taskbar Background */
     int draw_y0 = max_val(WM_TASKBAR_Y, clip_y);
     int draw_y1 = min_val(tb_b, clip_b);
@@ -241,70 +246,103 @@ void wm_render_taskbar(int clip_x, int clip_y, int clip_w, int clip_h) {
     for (int r = draw_y0; r < draw_y1; r++) {
         uint32_t* line = &backbuf[r * WM_SCREEN_WIDTH];
         for (int c = max_val(0, clip_x); c < min_val(WM_SCREEN_WIDTH, clip_r); c++) {
-            line[c] = (r == WM_TASKBAR_Y) ? WM_COLOR_TASKBAR_BD : WM_COLOR_TASKBAR;
+            line[c] = (r == WM_TASKBAR_Y) ? tb_bd : tb_bg;
         }
     }
 
-    /* 2. Draw Start Button: (6, 736, 72, 28) */
-    int btn_x = 6;
+    /* 2. Draw Windows 11 Start Button: (8, WM_TASKBAR_Y + 4, 40, 32) */
+    int btn_x = 8;
     int btn_y = WM_TASKBAR_Y + 4;
-    int btn_w = 72;
-    int btn_h = 28;
+    int btn_w = 40;
+    int btn_h = 32;
 
     if (btn_x < clip_r && btn_x + btn_w > clip_x && btn_y < clip_b && btn_y + btn_h > clip_y) {
-        bool sm_open = launcher_is_start_menu_open();
-        uint32_t btn_bg = sm_open ? 0x0017355B : WM_COLOR_START_BTN;
+        bool sm_open = startmenu_is_open() || launcher_is_start_menu_open();
+        uint32_t btn_bg = sm_open ? 0x00333333 : 0x00242424;
         gfx_fill_rect(btn_x, btn_y, btn_w, btn_h, btn_bg);
-        gfx_draw_rect(btn_x, btn_y, btn_w, btn_h, sm_open ? 0x000F223A : 0x004A7BB8);
-        int text_off = sm_open ? 1 : 0;
-        gfx_draw_string(btn_x + 10 + text_off, btn_y + 6 + text_off, "[Start]", WM_COLOR_START_TXT, btn_bg, true);
+        gfx_draw_rect(btn_x, btn_y, btn_w, btn_h, sm_open ? 0x000078D4 : 0x00383838);
+
+        /* Iconic Windows 11 4-Quadrant Logo (6x6 each, 2px gap) */
+        uint32_t logo_col = sm_open ? 0x0060A5FA : 0x000078D4;
+        int lx = btn_x + 13;
+        int ly = btn_y + 9;
+        /* Top-Left */
+        gfx_fill_rect(lx, ly, 6, 6, logo_col);
+        /* Top-Right */
+        gfx_fill_rect(lx + 8, ly, 6, 6, logo_col);
+        /* Bottom-Left */
+        gfx_fill_rect(lx, ly + 8, 6, 6, logo_col);
+        /* Bottom-Right */
+        gfx_fill_rect(lx + 8, ly + 8, 6, 6, logo_col);
     }
 
     /* 3. Draw Window Tabs for all open windows */
-    int tab_x = 86;
-    int tab_w = 140;
-    int tab_h = 28;
-    int tab_spacing = 6;
+    int tab_x = 56;
+    int tab_w = 150;
+    int tab_h = 32;
+    int tab_spacing = 4;
 
     /* Collect windows and draw in bottom-to-top order */
     window_t* curr = wm_bottom_window;
     while (curr) {
-        if (tab_x + tab_w > WM_SCREEN_WIDTH - 120) {
-            break; /* Prevent tab bar from overlapping system tray clock */
+        if (tab_x + tab_w > WM_SCREEN_WIDTH - 220) {
+            break; /* Prevent tab bar from overlapping system tray */
         }
 
         if (tab_x < clip_r && tab_x + tab_w > clip_x && btn_y < clip_b && btn_y + tab_h > clip_y) {
             bool focused = (curr == wm_top_window) && !(curr->flags & WINDOW_FLAG_MINIMIZED);
-            uint32_t tab_bg = focused ? 0x002B4C7E : 0x0020242E;
-            uint32_t tab_bd = focused ? 0x005580B8 : 0x003A4050;
-            uint32_t tab_fg = focused ? GFX_COLOR_WHITE : 0x00A0A0A0;
+            uint32_t tab_bg = focused ? 0x002B2B2B : 0x00202020;
+            uint32_t tab_bd = focused ? 0x003A3A3A : 0x00282828;
+            uint32_t tab_fg = focused ? 0x00FFFFFF : 0x00A0A0A0;
 
             gfx_fill_rect(tab_x, btn_y, tab_w, tab_h, tab_bg);
             gfx_draw_rect(tab_x, btn_y, tab_w, tab_h, tab_bd);
 
+            /* Windows 11 Running Indicator Pill (2px accent blue under focused tab) */
+            if (focused) {
+                gfx_fill_rect(tab_x + 20, btn_y + tab_h - 2, tab_w - 40, 2, 0x000078D4);
+            } else if (!(curr->flags & WINDOW_FLAG_MINIMIZED)) {
+                /* Subtle dot for running but unfocused window */
+                gfx_fill_rect(tab_x + tab_w / 2 - 3, btn_y + tab_h - 2, 6, 2, 0x00707070);
+            }
+
             /* Truncate title to fit tab width */
-            char tab_title[16];
+            char tab_title[18];
             size_t ti = 0;
-            while (curr->title[ti] && ti < 14) {
+            while (curr->title[ti] && ti < 16) {
                 tab_title[ti] = curr->title[ti];
                 ti++;
             }
             tab_title[ti] = '\0';
 
-            gfx_draw_string(tab_x + 8, btn_y + 6, tab_title, tab_fg, tab_bg, true);
+            gfx_draw_string(tab_x + 8, btn_y + 8, tab_title, tab_fg, tab_bg, true);
         }
 
         tab_x += tab_w + tab_spacing;
         curr = curr->prev;
     }
 
-    /* 4. Draw System Tray Digital Clock at right edge */
-    int clock_x = WM_SCREEN_WIDTH - 110;
-    int clock_y = WM_TASKBAR_Y + 10;
-    if (clock_x < clip_r && clock_x + 100 > clip_x) {
+    /* 4. Draw System Tray (Right side) */
+    /* Friday AI System Tray Status Chip */
+    int friday_chip_x = WM_SCREEN_WIDTH - 230;
+    int friday_chip_y = WM_TASKBAR_Y + 7;
+    int friday_chip_w = 98;
+    int friday_chip_h = 26;
+    if (friday_chip_x < clip_r && friday_chip_x + friday_chip_w > clip_x) {
+        gfx_fill_rect(friday_chip_x, friday_chip_y, friday_chip_w, friday_chip_h, 0x00242424);
+        gfx_draw_rect(friday_chip_x, friday_chip_y, friday_chip_w, friday_chip_h, 0x00383838);
+        /* Green online dot */
+        gfx_fill_rect(friday_chip_x + 8, friday_chip_y + 10, 6, 6, 0x00107C41);
+        gfx_draw_string(friday_chip_x + 20, friday_chip_y + 5, "Friday AI", 0x00D0D0D0, 0x00242424, true);
+    }
+
+    /* System Tray Digital Clock */
+    int clock_x = WM_SCREEN_WIDTH - 120;
+    int clock_y = WM_TASKBAR_Y + 12;
+    if (clock_x < clip_r && clock_x + 115 > clip_x) {
         char clock_buf[16];
         timer_format_clock(clock_buf);
-        gfx_draw_string(clock_x, clock_y, clock_buf, GFX_COLOR_WHITE, WM_COLOR_TASKBAR, true);
+        gfx_draw_string(clock_x, clock_y, clock_buf, 0x00FFFFFF, tb_bg, true);
     }
 }
 
@@ -332,18 +370,10 @@ void wm_invalidate_rect(int x, int y, int w, int h) {
     if (desktop_h > 0) {
         gfx_fill_rect(x, y, w, desktop_h, s_wallpaper_color);
 
-        /* Draw subtle desktop watermark centered if within dirty bounds */
-        const char title[] = "MyOS Desktop Environment";
-        int text_x = (WM_SCREEN_WIDTH - (int)strlen(title) * FONT_GLYPH_WIDTH) / 2;
-        int text_y = (WM_TASKBAR_Y - FONT_GLYPH_HEIGHT) / 2;
-
-        if (text_x < x + w && text_x + (int)strlen(title) * FONT_GLYPH_WIDTH > x &&
-            text_y < y + h && text_y + FONT_GLYPH_HEIGHT > y) {
-            gfx_draw_string(text_x, text_y, title, 0x00324866, s_wallpaper_color, true);
+        /* Only render Conky HUD if not in clean Windows 11 theme */
+        if (theme_get_current_id() != THEME_WINDOWS_11) {
+            hud_render(x, y, w, desktop_h);
         }
-
-        /* Draw Conky Desktop HUD widgets */
-        hud_render(x, y, w, desktop_h);
 
         /* Draw desktop shortcut icons */
         launcher_render_desktop_icons(x, y, w, desktop_h);
@@ -358,14 +388,20 @@ void wm_invalidate_rect(int x, int y, int w, int h) {
         curr = curr->prev;
     }
 
-    /* 2.5 Composite Friday AI Companion Orb */
-    friday_render_orb(backbuf, WM_SCREEN_WIDTH, WM_SCREEN_HEIGHT);
+    /* 2.5 Composite Friday AI Companion Orb (only if not Windows 11) */
+    if (theme_get_current_id() != THEME_WINDOWS_11) {
+        friday_render_orb(backbuf, WM_SCREEN_WIDTH, WM_SCREEN_HEIGHT);
+    }
 
-    /* 3. Composite Top Waybar Status Bar */
-    waybar_render(x, y, w, h);
+    /* 3. Composite Top Waybar Status Bar (only for Linux themes) */
+    if (theme_get_current_id() != THEME_WINDOWS_11) {
+        waybar_render(x, y, w, h);
+    }
 
-    /* 4. Composite Floating Pill Dock */
-    dock_render(x, y, w, h);
+    /* 4. Composite Floating Pill Dock (only for Linux themes) */
+    if (theme_get_current_id() != THEME_WINDOWS_11) {
+        dock_render(x, y, w, h);
+    }
 
     /* 5. Composite Taskbar if dirty rect touches the bottom */
     if (y + h > WM_TASKBAR_Y) {
@@ -437,18 +473,18 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
             }
         }
 
-        /* A. Check Top Waybar clicks */
-        if (waybar_handle_mouse(mx, my, left_pressed)) {
-            wm_redraw_all();
-            wm_prev_buttons = ev->buttons;
-            return;
-        }
-
-        /* B. Check Bottom Floating Dock clicks */
-        if (dock_handle_mouse(mx, my, left_pressed)) {
-            wm_redraw_all();
-            wm_prev_buttons = ev->buttons;
-            return;
+        /* A. Check Top Waybar and Floating Dock clicks (only if not Windows 11) */
+        if (theme_get_current_id() != THEME_WINDOWS_11) {
+            if (waybar_handle_mouse(mx, my, left_pressed)) {
+                wm_redraw_all();
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+            if (dock_handle_mouse(mx, my, left_pressed)) {
+                wm_redraw_all();
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
         }
 
         /* C. Handle open Start Menu clicks */
@@ -461,18 +497,19 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
 
         /* B. Check Taskbar clicks (y >= WM_TASKBAR_Y) */
         if (my >= WM_TASKBAR_Y) {
-            /* Start button check (x: 6 to 78) */
-            if (mx >= 6 && mx < 78) {
-                launcher_toggle_start_menu();
+            /* Start button check (x: 8 to 48) */
+            if (mx >= 8 && mx < 48) {
+                startmenu_toggle();
+                wm_redraw_all();
                 wm_prev_buttons = ev->buttons;
                 return;
             }
 
-            int tab_x = 86;
-            int tab_w = 140;
-            int tab_spacing = 6;
+            int tab_x = 56;
+            int tab_w = 150;
+            int tab_spacing = 4;
             int btn_y = WM_TASKBAR_Y + 4;
-            int tab_h = 28;
+            int tab_h = 32;
 
             window_t* curr = wm_bottom_window;
             while (curr) {
@@ -518,6 +555,12 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
                 } else {
                     wm_remove_window(hit_win);
                 }
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+
+            if (hit_type == WINDOW_HIT_MIN_BUTTON) {
+                wm_toggle_minimize(hit_win);
                 wm_prev_buttons = ev->buttons;
                 return;
             }

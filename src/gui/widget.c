@@ -65,8 +65,8 @@ widget_t* widget_create_button(int x, int y, int w, int h, const char* text,
     widget->width = w;
     widget->height = h;
 
-    widget->fg_color = 0x00101010; /* Dark text */
-    widget->bg_color = 0x00E0E4E8; /* Light grey button surface */
+    widget->fg_color = 0x00FFFFFF; /* Crisp white text */
+    widget->bg_color = 0x002D2D2D; /* Modern dark flat button surface */
     widget->transparent = false;
     widget->visible = true;
     widget->enabled = true;
@@ -108,8 +108,8 @@ widget_t* widget_create_textbox(int x, int y, int w, int h, const char* placehol
     widget->width = w;
     widget->height = h;
 
-    widget->fg_color = 0x00000000; /* Black text */
-    widget->bg_color = 0x00FFFFFF; /* White background */
+    widget->fg_color = 0x00F0F0F0; /* Crisp white text */
+    widget->bg_color = 0x00181818; /* Modern dark background */
     widget->transparent = false;
     widget->visible = true;
     widget->enabled = true;
@@ -200,21 +200,13 @@ void widget_render(widget_t* w) {
         }
         window_draw_string(win, w->x, w->y, w->text, w->fg_color, w->bg_color, w->transparent);
     } else if (w->type == WIDGET_TYPE_BUTTON) {
-        /* Button Background */
-        uint32_t btn_bg = w->pressed ? 0x00CED3D8 : w->bg_color;
+        /* Modern Flat Windows Button Background */
+        uint32_t btn_bg = w->pressed ? 0x001F1F1F : w->bg_color;
         window_fill_rect(win, w->x, w->y, w->width, w->height, btn_bg);
 
-        /* 3D Beveled Border: Inverted when pressed */
-        uint32_t top_left_color     = w->pressed ? 0x00707478 : 0x00FFFFFF;
-        uint32_t bottom_right_color = w->pressed ? 0x00FFFFFF : 0x00707478;
-
-        /* Top & Left border */
-        window_fill_rect(win, w->x, w->y, w->width, 1, top_left_color);
-        window_fill_rect(win, w->x, w->y, 1, w->height, top_left_color);
-
-        /* Bottom & Right border */
-        window_fill_rect(win, w->x, w->y + w->height - 1, w->width, 1, bottom_right_color);
-        window_fill_rect(win, w->x + w->width - 1, w->y, 1, w->height, bottom_right_color);
+        /* Crisp 1px flat border (accent blue if focused, subtle dark grey otherwise) */
+        uint32_t btn_border = w->focused ? 0x000078D4 : (w->pressed ? 0x00555555 : 0x003D3D3D);
+        window_draw_rect(win, w->x, w->y, w->width, w->height, btn_border);
 
         /* Center text inside button (shifted by 1px if pressed) */
         size_t text_len = strlen(w->text);
@@ -227,23 +219,28 @@ void widget_render(widget_t* w) {
 
         window_draw_string(win, text_x, text_y, w->text, w->fg_color, btn_bg, true);
     } else if (w->type == WIDGET_TYPE_TEXTBOX) {
-        /* TextBox Background */
+        /* Modern Flat Windows TextBox Background */
         window_fill_rect(win, w->x, w->y, w->width, w->height, w->bg_color);
 
-        /* Border: Blue highlight if focused, subtle inset grey otherwise */
-        uint32_t border_color = w->focused ? 0x002B4C7E : 0x00808890;
+        /* Border: Accent blue highlight if focused, subtle dark grey otherwise */
+        uint32_t border_color = w->focused ? 0x000078D4 : 0x00333333;
         window_draw_rect(win, w->x, w->y, w->width, w->height, border_color);
+
+        /* Fluent accent underline if focused */
+        if (w->focused && w->height > 4) {
+            window_fill_rect(win, w->x, w->y + w->height - 2, w->width, 2, 0x000078D4);
+        }
 
         /* Draw Text */
         int text_x = w->x + 6;
         int text_y = w->y + (w->height - FONT_GLYPH_HEIGHT) / 2;
         window_draw_string(win, text_x, text_y, w->text, w->fg_color, w->bg_color, true);
 
-        /* Draw Caret if focused */
+        /* Draw White Caret if focused */
         if (w->focused) {
             int caret_x = text_x + (int)strlen(w->text) * FONT_GLYPH_WIDTH;
             if (caret_x < w->x + w->width - 6) {
-                window_fill_rect(win, caret_x, text_y, 2, FONT_GLYPH_HEIGHT, 0x00000000);
+                window_fill_rect(win, caret_x, text_y, 2, FONT_GLYPH_HEIGHT, 0x00FFFFFF);
             }
         }
     }

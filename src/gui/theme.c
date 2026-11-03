@@ -2,10 +2,33 @@
 #include "gui/wm.h"
 #include "drivers/serial.h"
 
-static theme_id_t s_current_theme_id = THEME_CATPPUCCIN_MOCHA;
+static theme_id_t s_current_theme_id = THEME_WINDOWS_11;
 
-/* Static table defining all 5 theme palettes */
+/* Static table defining all 6 theme palettes */
 static const theme_t s_themes[THEME_COUNT] = {
+    [THEME_WINDOWS_11] = {
+        .name              = "Windows 11 Fluent",
+        .bg_desktop        = 0x000F172A, /* Windows 11 Deep Slate Navy */
+        .bg_panel          = 0x001C1C1C, /* Taskbar Dark Mica */
+        .bg_card           = 0x00242424, /* Modern Card */
+        .bg_window_client  = 0x001F1F1F, /* Clean dark client canvas */
+        .title_active_bg   = 0x00202020, /* Modern Windows Titlebar */
+        .title_active_fg   = 0x00FFFFFF, /* Pure White Title */
+        .title_inactive_bg = 0x00181818, /* Inactive Title */
+        .title_inactive_fg = 0x008A8A8A, /* Inactive Muted Silver */
+        .border_active     = 0x000078D4, /* 1px Windows Accent Blue outline */
+        .border_inactive   = 0x002D2D2D, /* Inactive 1px border */
+        .btn_close_bg      = 0x00C42B1C, /* Windows Close Red */
+        .text_primary      = 0x00FFFFFF, /* Crisp White */
+        .text_secondary    = 0x00A0A0A0, /* Subtext */
+        .accent_primary    = 0x000078D4, /* Iconic Windows Blue */
+        .accent_secondary  = 0x00107C41, /* Office Green */
+        .accent_danger     = 0x00E81123, /* Red */
+        .meter_fill        = 0x000078D4,
+        .meter_bg          = 0x00141414,
+        .dock_bg           = 0x001C1C1C,
+        .dock_border       = 0x00333333
+    },
     [THEME_CATPPUCCIN_MOCHA] = {
         .name              = "Catppuccin Mocha",
         .bg_desktop        = 0x001E1E2E, /* Base */
@@ -124,9 +147,9 @@ static const theme_t s_themes[THEME_COUNT] = {
 };
 
 void theme_init(void) {
-    s_current_theme_id = THEME_CATPPUCCIN_MOCHA;
+    s_current_theme_id = THEME_WINDOWS_11;
     wm_set_wallpaper_color(s_themes[s_current_theme_id].bg_desktop);
-    serial_writestring("[THEME] Theme engine initialized: Catppuccin Mocha active.\n");
+    serial_writestring("[THEME] Theme engine initialized: Windows 11 Fluent Dark active.\n");
 }
 
 void theme_set(theme_id_t id) {

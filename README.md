@@ -33,7 +33,8 @@ myos/
 │   ├── milestone-5.md      # Milestone 5 report and viva Q&A
 │   ├── milestone-6.md      # Milestone 6 report and viva Q&A
 │   ├── milestone-7.md      # Milestone 7 report and viva Q&A
-│   ├── milestone-9.md      # Milestone 9 VFS, RamFS, Task Manager, File Explorer & Terminal
+│   ├── milestone-9.md      # Milestone 9 VFS, RamFS, Task Manager, File Explorer, Terminal & Win11 UI
+│   ├── security_audit_report.html # Interactive Playwright 5-Suite Security Verification Dashboard
 │   ├── FINAL_PROJECT_REPORT.md    # Comprehensive B.Tech Thesis Project Report
 │   ├── VIVA_PREPARATION_GUIDE.md  # 40-Question Master Viva Defense Guide
 │   ├── DEMO_VIDEO_SCRIPT.md       # 7-Minute Screen Recording Video Storyboard
@@ -74,7 +75,7 @@ myos/
 │   │   ├── wm.h            # Z-order compositor, taskbar & dragging
 │   │   ├── widget.h        # Buttons, labels & single-line text boxes
 │   │   ├── desktop.h       # Desktop environment & hotkey dispatcher
-│   │   ├── theme.h         # Theme engine (Catppuccin Mocha, Tokyo Night, Cyberpunk, Nord)
+│   │   ├── theme.h         # Dynamic 6-palette theme engine (Windows 11 Fluent Dark default)
 │   │   ├── waybar.h        # Top Waybar status bar with workspace pills & telemetry chips
 │   │   ├── dock.h          # Centered floating pill dock with active pips
 │   │   ├── hud.h           # Conky desktop telemetry & 2x typographic clock HUD cards
@@ -155,16 +156,16 @@ myos/
     │   ├── cursor.c        # Software arrow cursor & save-under engine
     │   └── paint_demo.c    # Interactive mouse paint demo application
     ├── gui/
-    │   ├── window.c        # Window rendering, frame, title bar & client canvas
-    │   ├── wm.c            # Z-order compositor, compositing pipeline & hit test
-    │   ├── widget.c        # 3D relief buttons, labels & text boxes
+    │   ├── window.c        # Windows 11 Fluent window rendering, 1px borders, vector caption buttons [—][□][✕]
+    │   ├── wm.c            # Z-order compositor, Windows 11 40px taskbar with 4-pane Start & active pills
+    │   ├── widget.c        # Modern flat widgets (1px borders, accent focus rings, dark textboxes)
     │   ├── desktop.c       # Desktop environment & hotkey dispatcher ([F1]-[F12])
-    │   ├── theme.c         # Dynamic 5-palette theme engine
+    │   ├── theme.c         # Dynamic 6-palette theme engine (Windows 11 Fluent Dark default)
     │   ├── waybar.c        # Top status bar with [MyOS] launcher chip, chips & clock
     │   ├── dock.c          # Centered floating 12-icon pill dock with active pips
     │   ├── hud.c           # Conky desktop HUD cards & scaled typography
     │   ├── lockscreen.c    # Hyprlock alpha-dimmed lock screen & PIN entry
-    │   ├── startmenu.c     # Drop-down Start Menu popup with app tiles & power actions
+    │   ├── startmenu.c     # Windows Start Menu popup (dynamic taskbar anchoring, app tiles, power)
     │   └── notification.c  # Desktop Toast Notification system with progress bar
     ├── kernel/
     │   └── kernel.c        # kernel_main init order, echo loop & test hooks
@@ -265,3 +266,25 @@ Friday recognizes commands across three languages:
 ### Emergency Remote Self-Destruct
 - Initiated via: `http_pruthvi command code 0` or voice command *"सर्व हटवा"* / *"self destruct"*.
 - Wipes volatile RAM structures, alerts user, and terminates cleanly.
+
+---
+
+## Windows 11 Fluent Dark UI & Automated Playwright Security Audit
+
+### Windows 11 Fluent Dark Desktop
+MyOS features a modern Windows 11 Fluent Dark aesthetic designed for high legibility, clean geometry, and snappy desktop interaction:
+- **Crisp 1px Geometry**: Thin 1px outer window borders and modern flat controls replace legacy 3D beveled borders.
+- **Vector Caption Buttons**: Title bars feature native Windows 11 vector glyphs — horizontal minimize bar `[—]`, square maximize outline `[□]`, and diagonal close cross `[✕]` with red hover highlight.
+- **Windows 11 Taskbar**: 40px bottom bar with the signature 4-pane blue Start logo, running application tabs with accent blue indicator pills, Friday AI tray chip, and digital clock.
+- **Rising Start Menu**: Bottom-anchored popup menu featuring user profile header, search bar, 10 application tiles, and power actions.
+- **Dark Fluent Canvas**: Deep navy desktop (`#0F172A`), dark Mica taskbar (`#1C1C1C`), and charcoal client windows (`#1F1F1F`).
+
+### Automated Playwright Security Audit Suite
+A comprehensive 5-suite automated security testing pipeline (`scripts/security_audit_playwright.py`) verifies kernel resilience and isolation:
+1. **Hyprlock Screen Lock PIN Enforcement**: PIN-authenticated modal guard against unauthorized session access.
+2. **Emergency Self-Destruct Token Auth**: Strict token verification (`TOKEN_AUTH_OK`) preventing unauthenticated zeroization.
+3. **COM2 UART Buffer Overflow & Fuzzing**: Validates that 4 KB random fuzz payloads and 1000-packet bursts to VirtualBox COM2 (TCP 2345) are safely handled by the circular ring buffer without buffer overrun.
+4. **Memory Privilege & Page Fault Trapping**: Verifies MMU fault vectors (`#PF`) and null pointer protection (`0x00000000`).
+5. **VFS RamFS Path Traversal Prevention**: Confirms boundary enforcement and invalid path rejection across the virtual file system.
+
+The test suite generates an interactive glassmorphic report dashboard (`docs/security_audit_report.html`) and executes automated browser assertions via Playwright with Microsoft Edge (`channel="msedge"`), validating a 100% test pass rate.

@@ -15,8 +15,8 @@
  */
 
 #define WINDOW_TITLE_MAX          32
-#define WINDOW_TITLE_BAR_HEIGHT   24
-#define WINDOW_BORDER_WIDTH       2
+#define WINDOW_TITLE_BAR_HEIGHT   28
+#define WINDOW_BORDER_WIDTH       1
 #define WINDOW_CLOSE_BTN_SIZE     18
 
 /* Window State Flags */
@@ -30,6 +30,8 @@ typedef enum {
     WINDOW_HIT_NONE = 0,
     WINDOW_HIT_TITLE_BAR,
     WINDOW_HIT_CLOSE_BUTTON,
+    WINDOW_HIT_MAX_BUTTON,
+    WINDOW_HIT_MIN_BUTTON,
     WINDOW_HIT_CLIENT,
     WINDOW_HIT_BORDER
 } window_hit_t;
