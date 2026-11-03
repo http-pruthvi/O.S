@@ -7,8 +7,14 @@
 
 #define TOAST_W 240
 #define TOAST_H 54
-#define TOAST_Y 36
 #define TOAST_INITIAL_TICKS 350
+
+static inline int notification_get_y(void) {
+    if (theme_get_current_id() == THEME_WINDOWS_11) {
+        return WM_TASKBAR_Y - TOAST_H - 10;
+    }
+    return 36;
+}
 
 static notification_t s_active_toast;
 static notification_t s_history[NOTIFY_MAX_HISTORY];
@@ -39,19 +45,21 @@ void notification_push(notify_type_t type, const char* title, const char* messag
     }
 
     /* Invalidate toast region on screen */
-    wm_invalidate_rect(1024 - TOAST_W - 12, TOAST_Y, TOAST_W, TOAST_H);
+    int toast_y = notification_get_y();
+    wm_invalidate_rect(1024 - TOAST_W - 12, toast_y, TOAST_W, TOAST_H);
 }
 
 void notification_tick(void) {
     if (s_active_toast.active) {
+        int toast_y = notification_get_y();
         if (s_active_toast.ticks_remaining > 0) {
             s_active_toast.ticks_remaining--;
             if ((s_active_toast.ticks_remaining % 10) == 0) {
-                wm_invalidate_rect(1024 - TOAST_W - 12, TOAST_Y, TOAST_W, TOAST_H);
+                wm_invalidate_rect(1024 - TOAST_W - 12, toast_y, TOAST_W, TOAST_H);
             }
         } else {
             s_active_toast.active = false;
-            wm_invalidate_rect(1024 - TOAST_W - 12, TOAST_Y, TOAST_W, TOAST_H);
+            wm_invalidate_rect(1024 - TOAST_W - 12, toast_y, TOAST_W, TOAST_H);
         }
     }
 }
@@ -61,8 +69,9 @@ bool notification_handle_click(int32_t mx, int32_t my) {
         return false;
     }
     int toast_x = 1024 - TOAST_W - 12;
+    int toast_y = notification_get_y();
     if (mx >= toast_x && mx < toast_x + TOAST_W &&
-        my >= TOAST_Y && my < TOAST_Y + TOAST_H) {
+        my >= toast_y && my < toast_y + TOAST_H) {
         s_active_toast.active = false;
         return true;
     }
@@ -77,56 +86,56 @@ void notification_render(uint32_t* backbuf, uint32_t fb_width, uint32_t fb_heigh
     }
 
     int x = (int)fb_width - TOAST_W - 12;
-    int y = TOAST_Y;
+    int y = notification_get_y();
 
     uint32_t accent_color;
     const char* badge_text;
     switch (s_active_toast.type) {
         case NOTIFY_SUCCESS:
-            accent_color = 0x00A6E3A1; /* Green */
+            accent_color = 0x0034D399; /* Emerald Green */
             badge_text = "OK";
             break;
         case NOTIFY_WARNING:
-            accent_color = 0x00F9E2AF; /* Yellow */
+            accent_color = 0x00FBBF24; /* Amber */
             badge_text = "WARN";
             break;
         case NOTIFY_SECURITY:
-            accent_color = 0x00F38BA8; /* Red/Pink */
+            accent_color = 0x00F87171; /* Coral Red */
             badge_text = "SEC";
             break;
         case NOTIFY_INFO:
         default:
-            accent_color = theme ? theme->accent_primary : 0x00CBA6F7; /* Mauve */
+            accent_color = theme ? theme->accent_primary : 0x000078D4; /* Fluent Accent Blue */
             badge_text = "INFO";
             break;
     }
 
-    /* Card background & border */
-    uint32_t card_bg = theme ? theme->bg_card : 0x00181825;
-    uint32_t border_col = theme ? theme->border_active : 0x0045475A;
-    gfx_fill_rect(x, y, TOAST_W, TOAST_H, card_bg);
+    uint32_t bg_card = theme ? theme->bg_card : 0x001F1F1F;
+    uint32_t border_col = theme ? theme->border_active : 0x000078D4;
+
+    /* Card Shadow / Frame */
+    gfx_fill_rect(x, y, TOAST_W, TOAST_H, bg_card);
     gfx_draw_rect(x, y, TOAST_W, TOAST_H, border_col);
 
-    /* Left accent vertical indicator strip */
-    gfx_fill_rect(x, y, 5, TOAST_H, accent_color);
+    /* Left Accent Status Strip (4px width) */
+    gfx_fill_rect(x, y, 4, TOAST_H, accent_color);
 
-    /* Type badge */
-    gfx_fill_rect(x + 10, y + 8, 36, 14, accent_color);
-    gfx_draw_string(x + 12, y + 8, badge_text, 0x0011111B, 0, true);
+    /* Category Badge */
+    int badge_x = x + 10;
+    int badge_y = y + 8;
+    int badge_w = (int)strlen(badge_text) * 8 + 8;
+    gfx_fill_rect(badge_x, badge_y, badge_w, 16, accent_color);
+    gfx_draw_string(badge_x + 4, badge_y, badge_text, 0x0011111B, 0, true);
 
-    /* Title text */
-    uint32_t title_col = theme ? theme->text_primary : 0x00CDD6F4;
-    gfx_draw_string(x + 52, y + 8, s_active_toast.title, title_col, 0, true);
+    /* Title Text */
+    gfx_draw_string(badge_x + badge_w + 8, badge_y, s_active_toast.title, 0x00FFFFFF, 0, true);
 
-    /* Message text */
-    uint32_t sub_col = theme ? theme->text_secondary : 0x00A6ADC8;
-    gfx_draw_string(x + 12, y + 26, s_active_toast.message, sub_col, 0, true);
+    /* Message Body */
+    gfx_draw_string(x + 10, y + 28, s_active_toast.message, 0x00CDD6F4, 0, true);
 
-    /* Bottom remaining progress bar */
-    if (TOAST_INITIAL_TICKS > 0) {
-        int bar_w = ((int)s_active_toast.ticks_remaining * (TOAST_W - 10)) / TOAST_INITIAL_TICKS;
-        if (bar_w > 0) {
-            gfx_fill_rect(x + 5, y + TOAST_H - 3, bar_w, 2, accent_color);
-        }
+    /* Subtle Animated Progress / Decay Bar at Bottom of Card */
+    int bar_w = ((TOAST_W - 2) * s_active_toast.ticks_remaining) / TOAST_INITIAL_TICKS;
+    if (bar_w > 0) {
+        gfx_fill_rect(x + 1, y + TOAST_H - 2, bar_w, 2, accent_color);
     }
 }

@@ -15,6 +15,16 @@
 #include "drivers/serial.h"
 #include "lib/kprintf.h"
 #include "lib/string.h"
+#include "apps/store.h"
+
+extern void app_explorer_open(void);
+extern void app_terminal_open(void);
+extern void launcher_launch_editor(void);
+extern void launcher_launch_calc(void);
+extern void app_control_open(void);
+extern void app_taskmgr_open(void);
+extern void startmenu_open_search(void);
+
 
 /* Linked list of managed windows in Z-order (top-to-bottom) */
 static window_t* wm_top_window    = NULL; /* Active, topmost window */
@@ -276,17 +286,107 @@ void wm_render_taskbar(int clip_x, int clip_y, int clip_w, int clip_h) {
         gfx_fill_rect(lx + 8, ly + 8, 6, 6, logo_col);
     }
 
-    /* 3. Draw Window Tabs for all open windows */
-    int tab_x = 56;
-    int tab_w = 150;
+    /* 2.5 Windows 11 Search Button / Box: (52, WM_TASKBAR_Y + 4, 110, 32) */
+    int srch_x = 52;
+    int srch_w = 110;
+    if (srch_x < clip_r && srch_x + srch_w > clip_x && btn_y < clip_b && btn_y + btn_h > clip_y) {
+        gfx_fill_rect(srch_x, btn_y, srch_w, btn_h, 0x00222222);
+        gfx_draw_rect(srch_x, btn_y, srch_w, btn_h, 0x003A3A3A);
+
+        /* Magnifying Glass Icon */
+        int sx = srch_x + 12;
+        int sy = btn_y + 11;
+        gfx_draw_rect(sx, sy, 7, 7, 0x00A0A0A0);
+        gfx_draw_line(sx + 6, sy + 6, sx + 9, sy + 9, 0x00A0A0A0);
+
+        /* Search Label */
+        gfx_draw_string(srch_x + 28, btn_y + 8, "Search", 0x00A0A0A0, 0x00222222, true);
+    }
+
+    /* Vertical Divider between Search and Pinned Icons */
+    if (168 >= clip_x && 168 < clip_r) {
+        gfx_fill_rect(168, WM_TASKBAR_Y + 8, 1, 24, 0x002E2E2E);
+    }
+
+    /* 2.8 Windows 11 Pinned App Icons (Files, Terminal, Editor, Calc, Store, Settings, TaskMgr) */
+    int pin_x = 174;
+    int pin_w = 34;
+    int pin_spacing = 4;
+
+    for (int p = 0; p < 7; p++) {
+        int px = pin_x + p * (pin_w + pin_spacing);
+        if (px < clip_r && px + pin_w > clip_x && btn_y < clip_b && btn_y + btn_h > clip_y) {
+            gfx_fill_rect(px, btn_y, pin_w, btn_h, 0x00222222);
+            gfx_draw_rect(px, btn_y, pin_w, btn_h, 0x002D2D2D);
+
+            switch (p) {
+                case 0: /* Files: Manila Folder */
+                    gfx_fill_rect(px + 7, btn_y + 7, 8, 3, 0x00D49B00);
+                    gfx_fill_rect(px + 6, btn_y + 10, 22, 14, 0x00F5BA13);
+                    gfx_draw_rect(px + 6, btn_y + 10, 22, 14, 0x00A06D00);
+                    gfx_fill_rect(px + 10, btn_y + 8, 12, 3, 0x00FFFFFF);
+                    break;
+                case 1: /* Terminal: Blue Console */
+                    gfx_fill_rect(px + 6, btn_y + 7, 22, 18, 0x000F172A);
+                    gfx_draw_rect(px + 6, btn_y + 7, 22, 18, 0x0000E5FF);
+                    gfx_draw_char(px + 9, btn_y + 8, '>', 0x0000E5FF, 0x000F172A, false);
+                    gfx_fill_rect(px + 18, btn_y + 19, 5, 2, 0x0000E5FF);
+                    break;
+                case 2: /* Editor: Notepad Document */
+                    gfx_fill_rect(px + 8, btn_y + 6, 18, 20, 0x00FAFAFA);
+                    gfx_draw_rect(px + 8, btn_y + 6, 18, 20, 0x0060A5FA);
+                    gfx_fill_rect(px + 18, btn_y + 6, 8, 6, 0x0093C5FD);
+                    gfx_fill_rect(px + 11, btn_y + 12, 10, 2, 0x002563EB);
+                    gfx_fill_rect(px + 11, btn_y + 16, 12, 2, 0x002563EB);
+                    break;
+                case 3: /* Calculator: LCD + Buttons */
+                    gfx_fill_rect(px + 7, btn_y + 6, 20, 20, 0x00334155);
+                    gfx_draw_rect(px + 7, btn_y + 6, 20, 20, 0x0094A3B8);
+                    gfx_fill_rect(px + 9, btn_y + 8, 16, 5, 0x0086EFAC);
+                    for (int r = 0; r < 2; r++) {
+                        for (int c = 0; c < 2; c++) {
+                            gfx_fill_rect(px + 10 + c * 8, btn_y + 15 + r * 5, 5, 3, 0x00E2E8F0);
+                        }
+                    }
+                    break;
+                case 4: /* Web App Store: Shopping Bag with Gift Tag */
+                    gfx_fill_rect(px + 7, btn_y + 9, 20, 17, 0x000078D4);
+                    gfx_draw_rect(px + 7, btn_y + 9, 20, 17, 0x0038BDF8);
+                    gfx_draw_rect(px + 11, btn_y + 5, 12, 5, 0x00FFFFFF);
+                    gfx_fill_rect(px + 14, btn_y + 14, 6, 6, 0x00FDE047);
+                    break;
+                case 5: /* Settings: Purple Gear */
+                    gfx_fill_rect(px + 8, btn_y + 8, 18, 18, 0x006D28D9);
+                    gfx_draw_rect(px + 8, btn_y + 8, 18, 18, 0x00C4B5FD);
+                    gfx_fill_rect(px + 14, btn_y + 14, 6, 6, 0x001E1B4B);
+                    break;
+                case 6: /* Task Manager: Activity Graph */
+                    gfx_fill_rect(px + 6, btn_y + 7, 22, 18, 0x001E293B);
+                    gfx_draw_rect(px + 6, btn_y + 7, 22, 18, 0x0064748B);
+                    gfx_fill_rect(px + 9, btn_y + 17, 4, 6, 0x0022C55E);
+                    gfx_fill_rect(px + 15, btn_y + 12, 4, 11, 0x0022C55E);
+                    gfx_fill_rect(px + 21, btn_y + 14, 4, 9, 0x0022C55E);
+                    break;
+            }
+        }
+    }
+
+    /* Vertical Divider between Pinned Icons and Window Tabs */
+    if (442 >= clip_x && 442 < clip_r) {
+        gfx_fill_rect(442, WM_TASKBAR_Y + 8, 1, 24, 0x002E2E2E);
+    }
+
+    /* 3. Draw Window Tabs for all open windows (Starting at x = 448) */
+    int tab_x = 448;
+    int tab_w = 120;
     int tab_h = 32;
     int tab_spacing = 4;
 
     /* Collect windows and draw in bottom-to-top order */
     window_t* curr = wm_bottom_window;
     while (curr) {
-        if (tab_x + tab_w > WM_SCREEN_WIDTH - 220) {
-            break; /* Prevent tab bar from overlapping system tray */
+        if (tab_x + tab_w > WM_SCREEN_WIDTH - 240) {
+            break; /* Clean margin before Friday AI tray chip at 794 */
         }
 
         if (tab_x < clip_r && tab_x + tab_w > clip_x && btn_y < clip_b && btn_y + tab_h > clip_y) {
@@ -300,16 +400,16 @@ void wm_render_taskbar(int clip_x, int clip_y, int clip_w, int clip_h) {
 
             /* Windows 11 Running Indicator Pill (2px accent blue under focused tab) */
             if (focused) {
-                gfx_fill_rect(tab_x + 20, btn_y + tab_h - 2, tab_w - 40, 2, 0x000078D4);
+                gfx_fill_rect(tab_x + 16, btn_y + tab_h - 2, tab_w - 32, 2, 0x000078D4);
             } else if (!(curr->flags & WINDOW_FLAG_MINIMIZED)) {
                 /* Subtle dot for running but unfocused window */
                 gfx_fill_rect(tab_x + tab_w / 2 - 3, btn_y + tab_h - 2, 6, 2, 0x00707070);
             }
 
             /* Truncate title to fit tab width */
-            char tab_title[18];
+            char tab_title[14];
             size_t ti = 0;
-            while (curr->title[ti] && ti < 16) {
+            while (curr->title[ti] && ti < 12) {
                 tab_title[ti] = curr->title[ti];
                 ti++;
             }
@@ -375,8 +475,10 @@ void wm_invalidate_rect(int x, int y, int w, int h) {
             hud_render(x, y, w, desktop_h);
         }
 
-        /* Draw desktop shortcut icons */
-        launcher_render_desktop_icons(x, y, w, desktop_h);
+        /* Draw desktop shortcut icons only for Linux desktop themes */
+        if (theme_get_current_id() != THEME_WINDOWS_11) {
+            launcher_render_desktop_icons(x, y, w, desktop_h);
+        }
     }
 
     /* 2. Composite Windows from bottom to top (Painter's Algorithm) */
@@ -505,14 +607,68 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
                 return;
             }
 
-            int tab_x = 56;
-            int tab_w = 150;
+            /* Search button check (x: 52 to 164) */
+            if (mx >= 52 && mx < 164) {
+                startmenu_open_search();
+                wm_redraw_all();
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+
+            /* Pinned App Icons on Start Bar */
+            if (mx >= 174 && mx < 208) {
+                app_explorer_open();
+                wm_redraw_all();
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+            if (mx >= 212 && mx < 246) {
+                app_terminal_open();
+                wm_redraw_all();
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+            if (mx >= 250 && mx < 284) {
+                launcher_launch_editor();
+                wm_redraw_all();
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+            if (mx >= 288 && mx < 322) {
+                launcher_launch_calc();
+                wm_redraw_all();
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+            if (mx >= 326 && mx < 360) {
+                app_store_open();
+                wm_redraw_all();
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+            if (mx >= 364 && mx < 398) {
+                app_control_open();
+                wm_redraw_all();
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+            if (mx >= 402 && mx < 436) {
+                app_taskmgr_open();
+                wm_redraw_all();
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+
+            /* Window Tabs (Starting at x = 448) */
+            int tab_x = 448;
+            int tab_w = 120;
             int tab_spacing = 4;
             int btn_y = WM_TASKBAR_Y + 4;
             int tab_h = 32;
 
             window_t* curr = wm_bottom_window;
             while (curr) {
+                if (tab_x + tab_w > WM_SCREEN_WIDTH - 240) break;
                 if (mx >= tab_x && mx < tab_x + tab_w && my >= btn_y && my < btn_y + tab_h) {
                     wm_toggle_minimize(curr);
                     wm_prev_buttons = ev->buttons;
@@ -573,10 +729,12 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
                 wm_drag_offset_y = my - hit_win->y;
             }
         } else {
-            /* D. No window hit: check desktop shortcut icons */
-            if (launcher_handle_mouse(mx, my, left_pressed)) {
-                wm_prev_buttons = ev->buttons;
-                return;
+            /* D. No window hit: check desktop shortcut icons only for Linux themes */
+            if (theme_get_current_id() != THEME_WINDOWS_11) {
+                if (launcher_handle_mouse(mx, my, left_pressed)) {
+                    wm_prev_buttons = ev->buttons;
+                    return;
+                }
             }
         }
     }

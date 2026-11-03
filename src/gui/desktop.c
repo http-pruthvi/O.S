@@ -19,6 +19,7 @@
 #include "apps/player.h"
 #include "apps/breakout.h"
 #include "apps/friday.h"
+#include "apps/store.h"
 #include "gui/startmenu.h"
 #include "gui/notification.h"
 #include "gfx/gfx.h"
@@ -154,10 +155,6 @@ static void on_btn_about_close(widget_t* w, void* data) {
     }
 }
 
-/*
- * setup_showcase_windows:
- * Instantiates the 3 demonstration windows with widgets.
- */
 static void setup_showcase_windows(void) {
     /* -------------------------------------------------------------
      * Window 1: Widget Controls Showcase (Left side)
@@ -286,6 +283,15 @@ static void setup_showcase_windows(void) {
 }
 
 /*
+ * app_showcase_open:
+ * Opens the 3 demonstration windows with widgets on demand.
+ */
+void app_showcase_open(void) {
+    setup_showcase_windows();
+    wm_redraw_all();
+}
+
+/*
  * desktop_run:
  * Enters the interactive desktop environment.
  */
@@ -309,10 +315,10 @@ void desktop_run(void) {
     friday_init();
 
     /* Push Welcome Toast Notification */
-    notification_push(NOTIFY_SUCCESS, "MyOS Desktop 2.0", "System ready. Click [ MyOS ] or press F1!");
+    notification_push(NOTIFY_SUCCESS, "Windows 11 Fluent OS", "System ready. Clean desktop active!");
 
-    /* 2. Setup showcase windows and child widgets */
-    setup_showcase_windows();
+    /* 2. Clean desktop startup: apps are pinned on Start Bar and accessible via Search */
+    serial_writestring("[DESKTOP] Clean desktop initialized with zero open windows.\n");
 
     /* 3. Render desktop background, taskbar, and windows */
     wm_redraw_all();
@@ -346,6 +352,13 @@ void desktop_run(void) {
             if (lockscreen_is_active()) {
                 lockscreen_handle_key(c);
                 continue;
+            }
+
+            /* Intercept all keys if Start Menu / Search is open */
+            if (startmenu_is_open()) {
+                if (startmenu_handle_key(c)) {
+                    continue;
+                }
             }
 
             if ((unsigned char)c == KEY_F1) {

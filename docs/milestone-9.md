@@ -376,7 +376,70 @@ To ensure high assurance and robustness against exploits, a specialized end-to-e
 5. **Q: What role does Playwright play in an operating system security pipeline?**
    *A: Playwright enables automated, reproducible validation of security audit reports. It parses DOM telemetry nodes (`#security-score`, `#total-tests`, `#passed-tests`), verifies assertion criteria under headless browser automation, and captures cryptographically verifiable visual audit artifacts for compliance reports.*
 
+---
 
+## 12. Clean Windows 11 Desktop, Taskbar Search, Pinned Apps & Web App Store
 
+### 1. Goal and Overview
+To transition MyOS from a cluttered desktop into a professional, modern Windows 11 Fluent environment:
+1. **Clean Home Screen**: Desktop starts pristine with zero overlapping showcase windows and zero desktop shortcut icons cluttering the wallpaper.
+2. **Windows 11 Start Bar (Taskbar)**:
+   - Iconic 4-quadrant Windows Start button (`[8..48]`).
+   - Integrated Search Button / Box (`[52..164]`) with vector magnifying glass glyph.
+   - Pinned App Quick-Launch Bar: File Explorer, Terminal, Notepad, Calculator, Web App Store, System Settings, Task Manager.
+   - Running window tabs starting at `x = 448` with collision-guarded boundary (`WM_SCREEN_WIDTH - 240`) preventing overlap with the Friday AI chip.
+3. **Live Interactive App Search**:
+   - Start Menu features an interactive search box with live keyboard capture.
+   - Real-time case-insensitive string filtering across built-in applications and dynamic web packages.
+   - `[Enter]` immediately launches top matching application.
+4. **Web App Store & Package Manager (`src/apps/store.c`, `include/apps/store.h`)**:
+   - Full graphical package manager window (`680 x 480`).
+   - Catalog of 6 web applications: Web Browser Lite, Hex Editor Pro, Markdown Notes, IRC Chat Client, System Benchmark, Mandelbrot Explorer.
+   - 1-click `[ Install from Web ]` writing manifests to RamFS (`/<id>.app` and `/<id>`).
+   - Dynamically registers newly installed web apps into the Start Menu and Search engine.
+   - Desktop Toast Notification and PC speaker audio chime upon download.
+   - `[ Launch App ]` button opens interactive, running application windows.
+   - Terminal CLI integration (`store`, `install <pkg>`, `webget <url> [name]`).
+   - Friday AI Assistant integration (`CMD:INSTALL:<pkg>`).
 
+### 2. Architecture Diagram
 
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                               MyOS Windows 11 Fluent Desktop                           │
+│                                                                                        │
+│  [Clean Wallpaper Canvas - #0F172A]                                                    │
+│  (Zero desktop icons, zero startup popups, full focus on productivity)                │
+│                                                                                        │
+│  ┌───────────────────────────┐    ┌──────────────────────────────────────────────┐     │
+│  │ Windows 11 Start Menu     │    │ Web App Store & Package Manager              │     │
+│  │ - Monogram Profile [PV]   │    │ ┌──────────────────────────────────────────┐ │     │
+│  │ - Live Search Box         │    │ │ [ Featured Web Apps ]  [ Custom Web URL ]│ │     │
+│  │ - Real-Time App Filter    │    │ └──────────────────────────────────────────┘ │     │
+│  │ - 12 Pinned App Tiles     │    │ - Web Browser Lite  [ Installed - Launch ]  │     │
+│  │ - Registered Web Apps     │    │ - Hex Editor Pro    [ Install from Web ]    │     │
+│  │ - Lock, Reboot, Halt      │    │ - Markdown Notes    [ Install from Web ]    │     │
+│  └───────────────────────────┘    │ - IRC Chat Client   [ Install from Web ]    │     │
+│                                   │ - System Benchmark  [ Install from Web ]    │     │
+│                                   │ - Mandelbrot Set    [ Install from Web ]    │     │
+│                                   └──────────────────────────────────────────────┘     │
+│                                                                                        │
+│  ┌──────────────────────────────────────────────────────────────────────────────────┐  │
+│  │ Windows 11 Start Bar (Taskbar - 40px Height - #1C1C1C)                           │  │
+│  │ [Start] [Search] | [Files] [Term] [Edit] [Calc] [Store] [Gear] [Tasks] | [Tabs]   │  │
+│  │                  |               Pinned Quick-Launch Bar               | [Friday] │  │
+│  └──────────────────────────────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3. Likely Viva Questions & Answers
+1. **Q: How are web applications installed and persisted in an operating system without a hard disk?**
+   *A: The Web App Store generates application package manifests (`/<id>.app`) and binary stubs (`/<id>`) in the Virtual File System (RamFS). These in-memory inodes allocate heap memory dynamically, and the app is registered into the Start Menu's internal dispatch table.*
+2. **Q: How does the Start Menu search engine achieve real-time responsiveness?**
+   *A: Keystrokes are intercepted directly by `desktop_run()` and routed to `startmenu_handle_key()`. The search query buffer updates instantaneously, and `collect_search_results()` executes case-insensitive substring comparisons (`strstr`) over the combined built-in and dynamically registered application tables.*
+3. **Q: Why are pinned apps on the taskbar decoupled from active window tabs?**
+   *A: Following modern OS architecture (e.g. Windows 11), pinned shortcuts provide constant single-click access to frequently used applications regardless of whether an instance is running. Once launched, a window tab appears in the active tabs region with a focused indicator pill.*
+4. **Q: How was the pixel overlap between window tabs and the system tray resolved?**
+   *A: The window tab rendering loop in `wm_render_taskbar()` enforces a strict boundary `tab_x + tab_w <= WM_SCREEN_WIDTH - 240`. This guarantees a 10px buffer before the Friday AI status chip at `x = 794`, eliminating graphical collisions under heavy multitasking.*
+5. **Q: What security guarantees prevent a rogue web package from crashing the kernel?**
+   *A: Package names and URLs are sanitized using bounded string operations (`strlcpy`, `strlcat`). RamFS file creation verifies descriptor table limits, and all application execution functions run as isolated window tasks within cooperative or preemptive scheduling.*

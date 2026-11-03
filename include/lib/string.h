@@ -48,4 +48,7 @@ size_t strlcpy(char* dest, const char* src, size_t size);
 /* Bounded string append with guaranteed null-termination (Security Hardened) */
 size_t strlcat(char* dest, const char* src, size_t size);
 
+/* Locates a substring inside a null-terminated string */
+char* strstr(const char* haystack, const char* needle);
+
 #endif /* LIB_STRING_H */

@@ -52,7 +52,8 @@ myos/
 │   │   ├── clock.h         # Live digital clock & monthly calendar
 │   │   ├── control.h       # Control Panel with wallpaper theme selector & security monitor
 │   │   ├── minesweeper.h   # Classic Windows Minesweeper (9x9, 10 mines, digital LED readouts)
-│   │   └── snake.h         # Retro Snake Arcade game with score tracking
+│   │   ├── snake.h         # Retro Snake Arcade game with score tracking
+│   │   └── store.h         # Web App Store & Package Manager (1-click web install to RamFS)
 │   ├── arch/               # Architecture & hardware abstraction
 │   │   ├── lock.h          # Re-entrant interrupt masking (irq_save, irq_restore)
 │   │   ├── gdt.h           # Global Descriptor Table
@@ -120,7 +121,8 @@ myos/
     │   ├── player.c        # Media Player & Chiptune Synthesizer (PIT Ch2, 4 tracks, animated EQ)
     │   ├── breakout.c      # Retro 8-bit Breakout Arcade (fixed-point physics, paddle deflection)
     │   ├── minesweeper.c   # Classic Minesweeper (9x9 grid, 10 mines, 7-seg LED, smiley, BFS)
-    │   └── snake.c         # Retro Snake Arcade (20x20 grid, WASD/arrows, food apple, high score)
+    │   ├── snake.c         # Retro Snake Arcade (20x20 grid, WASD/arrows, food apple, high score)
+│   └── store.c         # Web App Store (catalog, package install, custom URLs, web launchers)
     ├── fs/
     │   ├── vfs.c           # Virtual File System abstraction & 32 file descriptors
     │   └── ramfs.c         # In-memory RAM filesystem driver with dynamic reallocation
@@ -288,3 +290,16 @@ A comprehensive 5-suite automated security testing pipeline (`scripts/security_a
 5. **VFS RamFS Path Traversal Prevention**: Confirms boundary enforcement and invalid path rejection across the virtual file system.
 
 The test suite generates an interactive glassmorphic report dashboard (`docs/security_audit_report.html`) and executes automated browser assertions via Playwright with Microsoft Edge (`channel="msedge"`), validating a 100% test pass rate.
+
+### Web App Store & Package Manager
+MyOS features an integrated **Web App Store** (`src/apps/store.c`, `include/apps/store.h`) allowing users to download and install applications from the web repository or custom URLs directly into the in-memory RamFS:
+- **Verified Web Catalog**: Curated suite of 6 installable applications:
+  - **Web Browser Lite**: HTTP/HTML web navigation client with bookmarks & URL viewport.
+  - **Hex Editor Pro**: Interactive binary hexadecimal inspector and memory viewer.
+  - **Markdown Notes**: Distraction-free markdown documentation reader.
+  - **IRC Chat Client**: Lightweight IRC messaging client for local or network rooms.
+  - **System Benchmark**: Real-time CPU arithmetic, memory bandwidth, and FPS diagnostics.
+  - **Mandelbrot Explorer**: Multi-color fractal mathematical generator.
+- **1-Click Web Installation**: Generates package manifests (`/<id>.app`) and executable stubs (`/<id>`) in RamFS, plays an audio chime, pushes a success toast notification, and dynamically registers the app into the Start Menu and Search engine.
+- **Taskbar Pinned Apps Bar**: 7 essential apps pinned directly on the Start Bar (Files, Terminal, Editor, Calc, Store, Settings, Task Manager) for instant access.
+- **Live Search Flyout**: Real-time keystroke filtering across all built-in and web applications with Enter to launch.

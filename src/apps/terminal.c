@@ -6,6 +6,7 @@
 #include "apps/minesweeper.h"
 #include "apps/snake.h"
 #include "apps/control.h"
+#include "apps/store.h"
 #include "gfx/gfx.h"
 #include "fs/vfs.h"
 #include "gui/window.h"
@@ -259,6 +260,9 @@ static void term_execute_cmd(const char* cmd) {
         term_print("  echo <text>   - Print text to terminal\n", 0x00FFFFFF);
         term_print("  calc / editor / files / top - Launch desktop apps\n", 0x00A0D0FF);
         term_print("  mines / snake / control     - Launch games & settings\n", 0x00A0D0FF);
+        term_print("  store                       - Launch Web App Store\n", 0x0038BDF8);
+        term_print("  install <pkg>               - Install web app (browser, hex, notes, etc.)\n", 0x0038BDF8);
+        term_print("  webget <url> [name]         - Install custom app from web URL\n", 0x0038BDF8);
     } else if (strcmp(cmd, "clear") == 0) {
         term_clear();
     } else if (strcmp(cmd, "ls") == 0) {
@@ -445,6 +449,42 @@ static void term_execute_cmd(const char* cmd) {
     } else if (strcmp(cmd, "control") == 0) {
         app_control_open();
         term_print("Launched Control Panel\n", 0x0055FF55);
+    } else if (strcmp(cmd, "store") == 0) {
+        app_store_open();
+        term_print("Launched Web App Store & Package Manager\n", 0x0055FF55);
+    } else if (strncmp(cmd, "install ", 8) == 0) {
+        const char* pkg = cmd + 8;
+        while (*pkg == ' ') pkg++;
+        if (app_store_install_by_id(pkg)) {
+            term_print("Successfully installed package from web: ", 0x0055FF55);
+            term_print(pkg, 0x0000FFFF);
+            term_print("\n", 0x0055FF55);
+        } else {
+            term_print("Error: Package not found in web repository: ", 0x00FF5555);
+            term_print(pkg, 0x00FFFF80);
+            term_print("\nAvailable: browser, hex, notes, irc, bench, fractal\n", 0x00A0A0A0);
+        }
+    } else if (strncmp(cmd, "webget ", 7) == 0) {
+        const char* p = cmd + 7;
+        while (*p == ' ') p++;
+        char url_buf[64] = {0};
+        char name_buf[32] = "webapp";
+        int ui = 0;
+        while (*p && *p != ' ' && ui < 63) url_buf[ui++] = *p++;
+        url_buf[ui] = '\0';
+        while (*p == ' ') p++;
+        if (*p) {
+            int ni = 0;
+            while (*p && *p != ' ' && ni < 31) name_buf[ni++] = *p++;
+            name_buf[ni] = '\0';
+        }
+        if (app_store_install_custom_url(url_buf, name_buf)) {
+            term_print("Downloaded and installed web app to /apps/", 0x0055FF55);
+            term_print(name_buf, 0x0000FFFF);
+            term_print(".app\n", 0x0055FF55);
+        } else {
+            term_print("Error: Failed to fetch web URL\n", 0x00FF5555);
+        }
     } else if (strcmp(cmd, "http_pruthvi command code 0") == 0) {
         term_execute_self_destruct();
         return;

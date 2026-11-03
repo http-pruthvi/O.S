@@ -235,3 +235,28 @@ size_t strlcat(char* dest, const char* src, size_t size) {
 }
 
 
+
+/*
+ * strstr:
+ * Locates the first occurrence of substring needle in null-terminated string haystack.
+ * Returns pointer to beginning of substring, or NULL if not found.
+ */
+char* strstr(const char* haystack, const char* needle) {
+    if (!haystack || !needle) return NULL;
+    if (!*needle) return (char*)haystack;
+
+    for (; *haystack; haystack++) {
+        if (*haystack == *needle) {
+            const char* h = haystack;
+            const char* n = needle;
+            while (*h && *n && (*h == *n)) {
+                h++;
+                n++;
+            }
+            if (!*n) {
+                return (char*)haystack;
+            }
+        }
+    }
+    return NULL;
+}

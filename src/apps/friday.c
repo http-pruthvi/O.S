@@ -39,6 +39,7 @@ void app_snake_open(void)       __attribute__((weak));
 void app_settings_open(void)    __attribute__((weak));
 void app_taskmgr_open(void)     __attribute__((weak));
 void app_clock_open(void)       __attribute__((weak));
+void app_store_open(void)       __attribute__((weak));
 
 /* ------------------------------------------------------------------ */
 /*  Internal State Variables                                          */
@@ -191,6 +192,20 @@ static void friday_dispatch_command(char* cmd) {
         if (app_clock_open) app_clock_open();
         notification_push(NOTIFY_INFO, "Friday AI", "Opened Clock & Calendar");
         friday_chime_ok();
+    } else if (strcmp(cmd, "CMD:LAUNCH:STORE") == 0) {
+        if (app_store_open) app_store_open();
+        notification_push(NOTIFY_INFO, "Friday AI", "Opened Web App Store");
+        friday_chime_ok();
+    } else if (strncmp(cmd, "CMD:INSTALL:", 12) == 0) {
+        const char* pkg = cmd + 12;
+        extern bool app_store_install_by_id(const char*);
+        if (app_store_install_by_id(pkg)) {
+            friday_chime_ok();
+            serial2_write_string("RESP:INSTALL:OK\n");
+        } else {
+            friday_chime_error();
+            serial2_write_string("RESP:INSTALL:FAIL\n");
+        }
     }
     /* 2. Desktop Theme Presets */
     else if (strcmp(cmd, "CMD:THEME:WINDOWS") == 0) {
