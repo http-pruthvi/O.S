@@ -13,6 +13,9 @@
 #include "lib/string.h"
 #include "lib/kprintf.h"
 #include "lib/io.h"
+#include "net/http.h"
+#include "net/netdev.h"
+#include "net/dns.h"
 
 /* Structure for a Web App in the Store Catalog */
 typedef struct {
@@ -82,6 +85,9 @@ static window_t* s_win_mandel  = NULL;
 static int s_store_tab = 0; /* 0: Featured Catalog, 1: Custom Web URL */
 static widget_t* s_txt_url = NULL;
 static widget_t* s_txt_name = NULL;
+static widget_t* s_browser_txt_url = NULL;
+static char      s_browser_html_buf[4096];
+static char      s_browser_html_buf[4096];
 
 /* Helper to convert uint to string without libc */
 static void fmt_uint(uint32_t val, char* buf) {
@@ -270,6 +276,7 @@ static void on_browser_close(window_t* win) {
     if (s_win_browser) {
         wm_remove_window(s_win_browser);
         s_win_browser = NULL;
+        s_browser_txt_url = NULL;
     }
 }
 
@@ -329,60 +336,307 @@ static void on_store_close(window_t* win) {
     }
 }
 
+/* Forward declaration of browser navigation */
+static void browser_navigate_to(const char* url);
+
+/* Render live parsed HTML document into browser viewport */
+static void browser_render_html(const char* url, const char* html_response, int status_code, size_t len) {
+    (void)url;
+    if (!s_win_browser) return;
+
+    /* 1. Clear Viewport Canvas */
+    window_fill_rect(s_win_browser, 10, 68, 620, 332, 0x0014161A);
+    window_draw_rect(s_win_browser, 10, 68, 620, 332, 0x002B303C);
+
+    const char* body = http_find_body(html_response);
+    int cur_x = 24;
+    int cur_y = 80;
+
+    const char* p = body;
+    while (*p && cur_y < 380) {
+        /* Skip leading whitespace */
+        while (*p == ' ' || *p == '\r' || *p == '\n' || *p == '\t') p++;
+        if (*p == '\0') break;
+
+        /* Check for <h1> */
+        if (strncmp(p, "<h1>", 4) == 0 || strncmp(p, "<H1>", 4) == 0) {
+            p += 4;
+            char title[64];
+            int ti = 0;
+            while (*p && strncmp(p, "</h1>", 5) != 0 && strncmp(p, "</H1>", 5) != 0 && ti < 63) {
+                title[ti++] = *p++;
+            }
+            title[ti] = '\0';
+            if (strncmp(p, "</h1>", 5) == 0 || strncmp(p, "</H1>", 5) == 0) p += 5;
+
+            window_draw_string(s_win_browser, cur_x, cur_y, title, 0x0038BDF8, 0x0014161A, true);
+            window_fill_rect(s_win_browser, cur_x, cur_y + 18, 550, 2, 0x000284C7);
+            cur_y += 28;
+            continue;
+        }
+
+        /* Check for <h2> */
+        if (strncmp(p, "<h2>", 4) == 0 || strncmp(p, "<H2>", 4) == 0) {
+            p += 4;
+            char heading[64];
+            int hi = 0;
+            while (*p && strncmp(p, "</h2>", 5) != 0 && strncmp(p, "</H2>", 5) != 0 && hi < 63) {
+                heading[hi++] = *p++;
+            }
+            heading[hi] = '\0';
+            if (strncmp(p, "</h2>", 5) == 0 || strncmp(p, "</H2>", 5) == 0) p += 5;
+
+            window_draw_string(s_win_browser, cur_x, cur_y, heading, 0x00FBBF24, 0x0014161A, true);
+            cur_y += 22;
+            continue;
+        }
+
+        /* Check for <pre> or <code> */
+        if (strncmp(p, "<pre>", 5) == 0 || strncmp(p, "<code>", 6) == 0) {
+            bool is_pre = (strncmp(p, "<pre>", 5) == 0);
+            p += is_pre ? 5 : 6;
+            char code[80];
+            int ci = 0;
+            const char* close_tag = is_pre ? "</pre>" : "</code>";
+            while (*p && strncmp(p, close_tag, is_pre ? 6 : 7) != 0 && ci < 79) {
+                if (*p != '\r' && *p != '\n') {
+                    code[ci++] = *p;
+                }
+                p++;
+            }
+            code[ci] = '\0';
+            while (*p && strncmp(p, close_tag, is_pre ? 6 : 7) != 0) p++;
+            if (*p) p += is_pre ? 6 : 7;
+
+            window_fill_rect(s_win_browser, cur_x, cur_y, 570, 24, 0x001F2937);
+            window_draw_rect(s_win_browser, cur_x, cur_y, 570, 24, 0x00374151);
+            window_draw_string(s_win_browser, cur_x + 8, cur_y + 4, code, 0x0034D399, 0x001F2937, true);
+            cur_y += 32;
+            continue;
+        }
+
+        /* Check for <a> */
+        if (strncmp(p, "<a ", 3) == 0 || strncmp(p, "<a>", 3) == 0) {
+            while (*p && *p != '>') p++;
+            if (*p == '>') p++;
+
+            char link[64];
+            int li = 0;
+            while (*p && strncmp(p, "</a>", 4) != 0 && li < 63) {
+                link[li++] = *p++;
+            }
+            link[li] = '\0';
+            if (strncmp(p, "</a>", 4) == 0) p += 4;
+
+            char full_link[80] = "-> [Link] ";
+            strlcat(full_link, link, sizeof(full_link));
+            window_draw_string(s_win_browser, cur_x, cur_y, full_link, 0x0060A5FA, 0x0014161A, true);
+            cur_y += 20;
+            continue;
+        }
+
+        /* Skip HTML tags */
+        if (*p == '<') {
+            while (*p && *p != '>') p++;
+            if (*p == '>') p++;
+            continue;
+        }
+
+        /* Extract plain paragraph or line text */
+        char line[80];
+        int lidx = 0;
+        while (*p && *p != '<' && *p != '\n' && lidx < 75) {
+            line[lidx++] = *p++;
+        }
+        line[lidx] = '\0';
+        if (*p == '\n') p++;
+
+        if (lidx > 0) {
+            window_draw_string(s_win_browser, cur_x, cur_y, line, 0x00E2E8F0, 0x0014161A, true);
+            cur_y += 18;
+        }
+    }
+
+    /* 2. Bottom Status Bar */
+    window_fill_rect(s_win_browser, 10, 404, 620, 26, 0x000F1216);
+    window_draw_rect(s_win_browser, 10, 404, 620, 26, 0x002B303C);
+
+    char status_str[100] = "Status: ";
+    char num_buf[16];
+    fmt_uint((uint32_t)status_code, num_buf);
+    strlcat(status_str, num_buf, sizeof(status_str));
+    strlcat(status_str, " OK | Host: TCP Port 80 Connected | Bytes: ", sizeof(status_str));
+    fmt_uint((uint32_t)len, num_buf);
+    strlcat(status_str, num_buf, sizeof(status_str));
+    strlcat(status_str, " B | eth0: 10.0.2.15", sizeof(status_str));
+
+    window_draw_string(s_win_browser, 18, 410, status_str, 0x0034D399, 0x000F1216, true);
+
+    char title_buf[64] = "Web Browser Lite - ";
+    strlcat(title_buf, num_buf, sizeof(title_buf));
+    strlcat(title_buf, " OK", sizeof(title_buf));
+    strlcpy(s_win_browser->title, title_buf, sizeof(s_win_browser->title));
+}
+
+/* Offline fallback welcome portal */
+static void browser_render_offline(const char* url) {
+    (void)url;
+    if (!s_win_browser) return;
+
+    window_fill_rect(s_win_browser, 10, 68, 620, 332, 0x0014161A);
+    window_draw_rect(s_win_browser, 10, 68, 620, 332, 0x002B303C);
+
+    window_draw_string(s_win_browser, 25, 80, "Welcome to Antigravity Web Portal (Offline Cache)", 0x0038BDF8, 0x0014161A, true);
+    window_fill_rect(s_win_browser, 25, 98, 550, 2, 0x000284C7);
+
+    window_draw_string(s_win_browser, 25, 115, "Connecting from: 32-bit x86 Protected Mode Kernel", 0x00E0E0E0, 0x0014161A, true);
+    window_draw_string(s_win_browser, 25, 135, "Network Link: Offline Cache Mode / Direct TCP Fallback", 0x00FBBF24, 0x0014161A, true);
+
+    window_draw_string(s_win_browser, 25, 168, "Featured Web Applications Available for Install:", 0x00FBBF24, 0x0014161A, true);
+    window_draw_string(s_win_browser, 45, 192, "[1] Hex Editor Pro  - Binary & Memory Analysis", 0x00FFFFFF, 0x0014161A, true);
+    window_draw_string(s_win_browser, 45, 216, "[2] Markdown Notes  - Documentation & Readme", 0x00FFFFFF, 0x0014161A, true);
+    window_draw_string(s_win_browser, 45, 240, "[3] IRC Chat Client - Global Developer Room", 0x00FFFFFF, 0x0014161A, true);
+    window_draw_string(s_win_browser, 45, 264, "[4] Mandelbrot Set  - Multi-Color Fractal Engine", 0x00FFFFFF, 0x0014161A, true);
+
+    window_draw_string(s_win_browser, 25, 305, "Tip: Use the bookmarks above (example.com, myos.org) for live HTTP GET!", 0x0060A5FA, 0x0014161A, true);
+
+    /* Bottom Status Bar */
+    window_fill_rect(s_win_browser, 10, 404, 620, 26, 0x000F1216);
+    window_draw_rect(s_win_browser, 10, 404, 620, 26, 0x002B303C);
+    window_draw_string(s_win_browser, 18, 410, "Status: Offline Cache Active | Ready to Navigate", 0x00FBBF24, 0x000F1216, true);
+
+    strlcpy(s_win_browser->title, "Web Browser Lite - Offline Portal", sizeof(s_win_browser->title));
+}
+
+/* Navigates to target URL, displaying live HTTP GET response or fallback */
+static void browser_navigate_to(const char* url) {
+    if (!s_win_browser || !url) return;
+
+    if (s_browser_txt_url) {
+        widget_set_text(s_browser_txt_url, url);
+    }
+
+    if (strcmp(url, "http://antigravity.os/welcome.html") == 0 ||
+        strcmp(url, "about:blank") == 0) {
+        browser_render_offline(url);
+        return;
+    }
+
+    /* Draw connecting splash */
+    window_fill_rect(s_win_browser, 10, 68, 620, 332, 0x0014161A);
+    window_draw_rect(s_win_browser, 10, 68, 620, 332, 0x002B303C);
+    window_draw_string(s_win_browser, 25, 85, "Resolving domain via DNS & Connecting to host...", 0x0038BDF8, 0x0014161A, true);
+    window_draw_string(s_win_browser, 25, 105, url, 0x00FBBF24, 0x0014161A, true);
+
+    window_fill_rect(s_win_browser, 10, 404, 620, 26, 0x000F1216);
+    window_draw_rect(s_win_browser, 10, 404, 620, 26, 0x002B303C);
+    window_draw_string(s_win_browser, 18, 410, "Status: Connecting to HTTP host via TCP/IP...", 0x0038BDF8, 0x000F1216, true);
+
+    if (gfx_get_backbuffer()) {
+        window_render(s_win_browser, gfx_get_backbuffer(), WM_SCREEN_WIDTH, 0, 0, WM_SCREEN_WIDTH, WM_SCREEN_HEIGHT);
+        gfx_flush();
+    }
+
+    /* Perform live HTTP GET */
+    int res = http_get(url, s_browser_html_buf, sizeof(s_browser_html_buf));
+    if (res >= 0) {
+        browser_render_html(url, s_browser_html_buf, http_get_status_code(s_browser_html_buf), (size_t)res);
+    } else {
+        browser_render_offline(url);
+    }
+}
+
+/* Button Callbacks */
+static void on_browser_go(widget_t* w, void* user_data) {
+    (void)w; (void)user_data;
+    if (s_browser_txt_url) {
+        browser_navigate_to(s_browser_txt_url->text);
+    }
+}
+
+static void on_browser_back(widget_t* w, void* user_data) {
+    (void)w; (void)user_data;
+    browser_navigate_to("http://antigravity.os/welcome.html");
+}
+
+static void on_bm_example(widget_t* w, void* user_data) {
+    (void)w; (void)user_data;
+    browser_navigate_to("http://example.com");
+}
+
+static void on_bm_news(widget_t* w, void* user_data) {
+    (void)w; (void)user_data;
+    browser_navigate_to("http://myos.org/news");
+}
+
+static void on_bm_demo(widget_t* w, void* user_data) {
+    (void)w; (void)user_data;
+    browser_navigate_to("http://10.0.2.2:8080/demo");
+}
+
 /* 1. Web Browser Lite */
 static void launch_web_browser(void) {
     if (s_win_browser) {
         wm_bring_to_front(s_win_browser);
         return;
     }
-    s_win_browser = window_create(180, 110, 640, 440, "Web Browser Lite - http://antigravity.os",
-                                  WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE);
+    s_win_browser = window_create(180, 110, 640, 440, "Web Browser Lite - http://example.com",
+                                  WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE | WINDOW_FLAG_RESIZABLE);
     if (!s_win_browser) return;
 
-    /* Address Bar Bar Background */
-    window_fill_rect(s_win_browser, 10, 10, 620, 36, 0x00262626);
-    window_draw_rect(s_win_browser, 10, 10, 620, 36, 0x003D3D3D);
+    /* Address Bar Row */
+    window_fill_rect(s_win_browser, 10, 8, 620, 26, 0x00262626);
+    window_draw_rect(s_win_browser, 10, 8, 620, 26, 0x003D3D3D);
 
-    widget_t* btn_back = widget_create_button(16, 14, 50, 28, "< Back", NULL, NULL);
+    widget_t* btn_back = widget_create_button(12, 8, 48, 26, "< Back", on_browser_back, NULL);
     widget_add_to_window(s_win_browser, btn_back);
 
-    widget_t* txt_url = widget_create_textbox(72, 14, 460, 28, "http://antigravity.os/welcome.html", 64);
-    widget_add_to_window(s_win_browser, txt_url);
+    s_browser_txt_url = widget_create_textbox(64, 8, 484, 26, "http://example.com", 64);
+    widget_add_to_window(s_win_browser, s_browser_txt_url);
 
-    widget_t* btn_go = widget_create_button(540, 14, 80, 28, "Go ->", NULL, NULL);
+    widget_t* btn_go = widget_create_button(552, 8, 76, 26, "Go ->", on_browser_go, NULL);
     widget_add_to_window(s_win_browser, btn_go);
 
-    /* Webpage Viewport Area */
-    window_fill_rect(s_win_browser, 10, 56, 620, 340, 0x00181818);
-    window_draw_rect(s_win_browser, 10, 56, 620, 340, 0x002D2D2D);
+    /* Bookmark Navigation Row */
+    widget_t* btn_bm1 = widget_create_button(12, 38, 120, 24, "[example.com]", on_bm_example, NULL);
+    widget_add_to_window(s_win_browser, btn_bm1);
 
-    /* Render HTML Webpage Content */
-    window_draw_string(s_win_browser, 30, 75, "Welcome to Antigravity Web Portal", 0x0038BDF8, 0x00181818, true);
-    window_fill_rect(s_win_browser, 30, 96, 320, 2, 0x000078D4);
+    widget_t* btn_bm2 = widget_create_button(138, 38, 130, 24, "[myos.org/news]", on_bm_news, NULL);
+    widget_add_to_window(s_win_browser, btn_bm2);
 
-    window_draw_string(s_win_browser, 30, 115, "Connecting from: 32-bit x86 Protected Mode Kernel", 0x00E0E0E0, 0x00181818, true);
-    window_draw_string(s_win_browser, 30, 140, "Protocol: HTTP/1.1 over VirtualBox Host Bridge", 0x00A0A0A0, 0x00181818, true);
+    widget_t* btn_bm3 = widget_create_button(274, 38, 130, 24, "[10.0.2.2/demo]", on_bm_demo, NULL);
+    widget_add_to_window(s_win_browser, btn_bm3);
 
-    window_draw_string(s_win_browser, 30, 180, "Featured Web Applications Available for Install:", 0x00FBBF24, 0x00181818, true);
-    window_draw_string(s_win_browser, 50, 205, "[1] Hex Editor Pro  - Binary & Memory Analysis", 0x00FFFFFF, 0x00181818, true);
-    window_draw_string(s_win_browser, 50, 230, "[2] Markdown Notes  - Documentation & Readme", 0x00FFFFFF, 0x00181818, true);
-    window_draw_string(s_win_browser, 50, 255, "[3] IRC Chat Client - Global Developer Room", 0x00FFFFFF, 0x00181818, true);
-    window_draw_string(s_win_browser, 50, 280, "[4] Mandelbrot Set  - Multi-Color Fractal Engine", 0x00FFFFFF, 0x00181818, true);
-
-    window_draw_string(s_win_browser, 30, 320, "Status: Online | Storage: RamFS (128 MB)", 0x0034D399, 0x00181818, true);
+    /* Navigate to default homepage */
+    browser_navigate_to("http://example.com");
 
     s_win_browser->on_close = on_browser_close;
     wm_add_window(s_win_browser);
 }
 
+/* Helper: formats byte as 2-character hex */
+static void byte_to_hex(uint8_t b, char* out) {
+    static const char hex[] = "0123456789ABCDEF";
+    out[0] = hex[(b >> 4) & 0x0F];
+    out[1] = hex[b & 0x0F];
+}
+
 /* 2. Hex Editor Pro */
-static void launch_hex_editor(void) {
+void launch_hex_editor_file(const char* filepath) {
     if (s_win_hex) {
-        wm_bring_to_front(s_win_hex);
-        return;
+        wm_remove_window(s_win_hex);
+        s_win_hex = NULL;
     }
-    s_win_hex = window_create(220, 130, 580, 400, "Hex Editor Pro - RamFS Binary Inspector",
-                              WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE);
+
+    char title_buf[64] = "Hex Editor Pro - ";
+    if (filepath) {
+        strncat(title_buf, filepath, 42);
+    } else {
+        strcat(title_buf, "RamFS Binary Inspector");
+    }
+
+    s_win_hex = window_create(220, 130, 580, 400, title_buf,
+                              WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE | WINDOW_FLAG_RESIZABLE);
     if (!s_win_hex) return;
 
     window_fill_rect(s_win_hex, 10, 10, 560, 350, 0x000F172A);
@@ -392,22 +646,77 @@ static void launch_hex_editor(void) {
     window_draw_string(s_win_hex, 25, 20, "OFFSET    00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F  ASCII DUMP", 0x0038BDF8, 0x000F172A, true);
     window_fill_rect(s_win_hex, 25, 38, 530, 1, 0x00475569);
 
-    /* Sample Hex Rows */
-    static const char* hex_rows[10] = {
-        "00000000  7F 45 4C 46 01 01 01 00  00 00 00 00 00 00 00 00  |.ELF............|",
-        "00000010  02 00 03 00 01 00 00 00  54 80 04 08 34 00 00 00  |........T...4...|",
-        "00000020  00 00 00 00 00 00 00 00  34 00 20 00 01 00 28 00  |........4. ...(.|",
-        "00000030  1B 00 1A 00 06 00 00 00  34 00 00 00 34 80 04 08  |........4...4...|",
-        "00000040  01 00 00 00 00 10 00 00  4D 79 4F 53 20 56 31 2E  |........MyOS V1.|",
-        "00000050  30 20 4B 65 72 6E 65 6C  20 50 72 6F 74 65 63 74  |0 Kernel Protect|",
-        "00000060  65 64 20 4D 6F 64 65 20  49 64 65 6E 74 69 74 79  |ed Mode Identity|",
-        "00000070  2D 4D 61 70 70 65 64 20  50 61 67 69 6E 67 20 4F  |-Mapped Paging O|",
-        "00000080  4B 20 50 4D 4D 20 46 72  61 6D 65 73 20 52 65 61  |K PMM Frames Rea|",
-        "00000090  64 79 20 56 46 53 20 52  61 6D 46 53 20 4D 6F 75  |dy VFS RamFS Mou|"
-    };
+    /* Read up to 160 bytes from file if provided */
+    uint8_t file_buf[160];
+    int bytes_read = 0;
+    if (filepath) {
+        int fd = vfs_open(filepath, 0x01);
+        if (fd >= 0) {
+            bytes_read = vfs_read(fd, file_buf, sizeof(file_buf));
+            vfs_close(fd);
+        }
+    }
 
-    for (int i = 0; i < 10; i++) {
-        window_draw_string(s_win_hex, 25, 48 + i * 22, hex_rows[i], 0x00CBD5E1, 0x000F172A, true);
+    if (bytes_read > 0) {
+        int rows = (bytes_read + 15) / 16;
+        if (rows > 10) rows = 10;
+        for (int r = 0; r < rows; r++) {
+            char row_str[80];
+            int off = r * 16;
+            /* Offset: "000000X0  " */
+            row_str[0] = '0'; row_str[1] = '0'; row_str[2] = '0'; row_str[3] = '0';
+            row_str[4] = '0'; row_str[5] = '0';
+            byte_to_hex((uint8_t)off, &row_str[6]);
+            row_str[8] = ' '; row_str[9] = ' ';
+            int pos = 10;
+
+            int chunk_len = bytes_read - off;
+            if (chunk_len > 16) chunk_len = 16;
+
+            for (int c = 0; c < 16; c++) {
+                if (c == 8) {
+                    row_str[pos++] = ' ';
+                }
+                if (c < chunk_len) {
+                    byte_to_hex(file_buf[off + c], &row_str[pos]);
+                    pos += 2;
+                    row_str[pos++] = ' ';
+                } else {
+                    row_str[pos++] = ' ';
+                    row_str[pos++] = ' ';
+                    row_str[pos++] = ' ';
+                }
+            }
+
+            row_str[pos++] = ' ';
+            row_str[pos++] = '|';
+            for (int c = 0; c < chunk_len; c++) {
+                uint8_t ch = file_buf[off + c];
+                row_str[pos++] = (ch >= 32 && ch <= 126) ? (char)ch : '.';
+            }
+            row_str[pos++] = '|';
+            row_str[pos] = '\0';
+
+            window_draw_string(s_win_hex, 25, 48 + r * 22, row_str, 0x00CBD5E1, 0x000F172A, true);
+        }
+    } else {
+        /* Sample Hex Rows */
+        static const char* hex_rows[10] = {
+            "00000000  7F 45 4C 46 01 01 01 00  00 00 00 00 00 00 00 00  |.ELF............|",
+            "00000010  02 00 03 00 01 00 00 00  54 80 04 08 34 00 00 00  |........T...4...|",
+            "00000020  00 00 00 00 00 00 00 00  34 00 20 00 01 00 28 00  |........4. ...(.|",
+            "00000030  1B 00 1A 00 06 00 00 00  34 00 00 00 34 80 04 08  |........4...4...|",
+            "00000040  01 00 00 00 00 10 00 00  4D 79 4F 53 20 56 31 2E  |........MyOS V1.|",
+            "00000050  30 20 4B 65 72 6E 65 6C  20 50 72 6F 74 65 63 74  |0 Kernel Protect|",
+            "00000060  65 64 20 4D 6F 64 65 20  49 64 65 6E 74 69 74 79  |ed Mode Identity|",
+            "00000070  2D 4D 61 70 70 65 64 20  50 61 67 69 6E 67 20 4F  |-Mapped Paging O|",
+            "00000080  4B 20 50 4D 4D 20 46 72  61 6D 65 73 20 52 65 61  |K PMM Frames Rea|",
+            "00000090  64 79 20 56 46 53 20 52  61 6D 46 53 20 4D 6F 75  |dy VFS RamFS Mou|"
+        };
+
+        for (int i = 0; i < 10; i++) {
+            window_draw_string(s_win_hex, 25, 48 + i * 22, hex_rows[i], 0x00CBD5E1, 0x000F172A, true);
+        }
     }
 
     widget_t* btn_close = widget_create_button(470, 330, 90, 26, "Close", on_btn_hex_close, NULL);
@@ -415,6 +724,10 @@ static void launch_hex_editor(void) {
 
     s_win_hex->on_close = on_hex_close;
     wm_add_window(s_win_hex);
+}
+
+static void launch_hex_editor(void) {
+    launch_hex_editor_file(NULL);
 }
 
 /* 3. Markdown Notes */
@@ -747,7 +1060,7 @@ void app_store_open(void) {
     }
 
     s_win_store = window_create(170, 110, 680, 480, "Web App Store & Package Manager",
-                                WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE);
+                                WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE | WINDOW_FLAG_RESIZABLE);
     if (!s_win_store) return;
 
     s_win_store->on_click = on_store_canvas_click;

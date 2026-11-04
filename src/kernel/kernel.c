@@ -22,6 +22,9 @@
 #include "drivers/timer.h"
 #include "drivers/keyboard.h"
 #include "drivers/mouse.h"
+#include "drivers/pci.h"
+#include "drivers/net.h"
+#include "net/netdev.h"
 #include "proc/task.h"
 #include "proc/scheduler.h"
 #include "lib/kprintf.h"
@@ -507,7 +510,7 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     /* Welcome Banner */
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
     kprintf("================================================================\n");
-    kprintf("  MyOS - 32-bit x86 Kernel (Milestone 9: VFS, RamFS, Desktop Apps) \n");
+    kprintf("  MyOS - 32-bit x86 Kernel (Milestone 11: TCP/IP Stack & Web Browser) \n");
     kprintf("================================================================\n");
 
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
@@ -575,6 +578,23 @@ void kernel_main(uint32_t magic, multiboot_info_t* mboot_info) {
     vfs_init();
     ramfs_init();
     kprintf("[OK] Virtual File System & RamFS mounted at '/'\n");
+
+    /* Step 14c: PCI Bus Enumeration */
+    pci_init();
+    kprintf("[OK] PCI Bus Subsystem initialized (%u devices discovered)\n", pci_get_device_count());
+
+    /* Step 14d: Network Interface Card Driver (Intel E1000 / Realtek RTL8139) */
+    net_driver_init();
+    if (net_is_active()) {
+        const uint8_t* mac = net_get_mac();
+        kprintf("[OK] Network Interface active: %s (MAC: %02x:%02x:%02x:%02x:%02x:%02x)\n",
+                net_get_device_name(), mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    } else {
+        kprintf("[OK] Network Subsystem initialized (no active Ethernet adapter detected)\n");
+    }
+
+    /* Step 14e: TCP/IP Protocol Stack (Milestone 11) */
+    net_init();
 
     /* Step 15: Multitasking & Preemptive Round-Robin Scheduler */
     task_init();

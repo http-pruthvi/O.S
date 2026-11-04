@@ -34,6 +34,8 @@ myos/
 │   ├── milestone-6.md      # Milestone 6 report and viva Q&A
 │   ├── milestone-7.md      # Milestone 7 report and viva Q&A
 │   ├── milestone-9.md      # Milestone 9 VFS, RamFS, Task Manager, File Explorer, Terminal & Win11 UI
+│   ├── milestone-10.md     # Milestone 10 PCI Bus Enumeration, Intel E1000 & Realtek RTL8139 NIC Drivers
+│   ├── milestone-11.md     # Milestone 11 TCP/IP Protocol Stack, HTTP/1.0 Web Browser Lite & CLI Tools
 │   ├── security_audit_report.html # Interactive Playwright 5-Suite Security Verification Dashboard
 │   ├── FINAL_PROJECT_REPORT.md    # Comprehensive B.Tech Thesis Project Report
 │   ├── VIVA_PREPARATION_GUIDE.md  # 40-Question Master Viva Defense Guide
@@ -71,6 +73,16 @@ myos/
 │   ├── fs/                 # Storage & Virtual File System (Milestone 9)
 │   │   ├── vfs.h           # VFS node structures, file descriptor table & API
 │   │   └── ramfs.h         # In-memory RAM filesystem driver interface
+│   ├── net/                # TCP/IP Network Protocol Stack (Milestone 11)
+│   │   ├── ethernet.h      # IEEE 802.3 Ethernet II frame framing & EtherType demux
+│   │   ├── arp.h           # RFC 826 ARP packet, request/reply & in-memory cache
+│   │   ├── ipv4.h          # RFC 791 IPv4 datagrams, 16-bit Internet checksum & routing
+│   │   ├── icmp.h          # RFC 792 ICMP Echo auto-responder & ping RTT timing
+│   │   ├── udp.h           # RFC 768 UDP datagrams & port demultiplexing table
+│   │   ├── dns.h           # RFC 1035 DNS client resolver over UDP port 53 (QNAME)
+│   │   ├── tcp.h           # RFC 793 TCP state machine, 3-way handshake & pseudo-checksum
+│   │   ├── http.h          # RFC 1945 HTTP/1.0 web client & status/body parser
+│   │   └── netdev.h        # Network device abstraction & Virtual NAT bridge responder
 │   ├── gui/                # Window Manager & Widgets (Milestone 5 & Riced Suite)
 │   │   ├── window.h        # Window structures, title bars & client canvas
 │   │   ├── wm.h            # Z-order compositor, taskbar & dragging
@@ -303,3 +315,18 @@ MyOS features an integrated **Web App Store** (`src/apps/store.c`, `include/apps
 - **1-Click Web Installation**: Generates package manifests (`/<id>.app`) and executable stubs (`/<id>`) in RamFS, plays an audio chime, pushes a success toast notification, and dynamically registers the app into the Start Menu and Search engine.
 - **Taskbar Pinned Apps Bar**: 7 essential apps pinned directly on the Start Bar (Files, Terminal, Editor, Calc, Store, Settings, Task Manager) for instant access.
 - **Live Search Flyout**: Real-time keystroke filtering across all built-in and web applications with Enter to launch.
+
+---
+
+## Milestone 11: TCP/IP Protocol Stack & Web Browser Lite
+
+MyOS features a complete, modular **TCP/IP Protocol Stack** built from scratch without libc or external dependencies:
+- **Layer 2 (Link)**: Ethernet II (`net/ethernet.c`) with 60-byte padding; ARP (`net/arp.c`) with 16-entry LRU cache, request broadcasting, and automatic reply generation.
+- **Layer 3 (Network)**: IPv4 (`net/ipv4.c`) with standard 16-bit one's complement Internet checksum, subnet masking (`10.0.2.0/24`), gateway routing (`10.0.2.2`), and protocol demultiplexing; ICMP (`net/icmp.c`) with Echo auto-responder and millisecond RTT ping.
+- **Layer 4 (Transport)**: UDP (`net/udp.c`) with port demuxing table; TCP (`net/tcp.c`) with 5-state connection FSM (`CLOSED`, `SYN_SENT`, `ESTABLISHED`, `FIN_WAIT`, `CLOSE_WAIT`), 3-way handshake, 12-byte pseudo-header checksum, sliding 8 KB receive buffer, and graceful FIN/ACK teardown.
+- **Layer 7 (Application)**: DNS Client (`net/dns.c`) with QNAME label encoding and Type A parsing over UDP port 53; HTTP/1.0 Client (`net/http.c`) with URL parser and HTTP GET client.
+- **Web Browser Lite (`src/apps/store.c`)**: Interactive address bar, quick bookmarks (`[example.com]`, `[myos.org/news]`, `[10.0.2.2/demo]`), live HTML tag parser (`<h1>`, `<h2>`, `<p>`, `<a>`, `<pre>`, `<code>`), and offline cached portal.
+- **Terminal CLI Networking (`src/apps/terminal.c`)**:
+  - `ifconfig`: Displays interface name, link status, MAC address, IPv4 address, Netmask, Gateway, DNS, and TX/RX packet & byte statistics.
+  - `ping <host>`: Resolves DNS, sends 4 ICMP echo requests, reports latency in ms, and calculates packet loss.
+  - `curl <url>`: Connects over TCP port 80, prints raw HTTP status line, headers, and body with byte metrics.

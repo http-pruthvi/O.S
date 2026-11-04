@@ -30,4 +30,7 @@ bool app_store_is_installed(const char* pkg_id);
 /* Launches an installed web app by package ID */
 bool app_store_launch(const char* pkg_id);
 
+/* Inspects a given file in Hex Editor Pro */
+void launch_hex_editor_file(const char* filepath);
+
 #endif /* APPS_STORE_H */

@@ -360,6 +360,75 @@ Milestone 7 transitions the operating system from a single-threaded kernel loop 
 +-----------------------------------------------------------------------------------+
 ```
 
+---
+
+## 10. PCI Bus & Network Subsystem Architecture (Milestone 10)
+
+```text
++-----------------------------------------------------------------------------------+
+|  PCI Configuration Space (drivers/pci.c, include/drivers/pci.h):                  |
+|    - I/O Mechanism #1: Port 0xCF8 (Address) & Port 0xCFC (Data)                   |
+|    - Full 256-bus scan, 32 slots, 8 functions with multi-function bit 7 detection |
+|    - Dynamic BAR detection (I/O Port vs MMIO) and 0xFFFFFFFF sizing algorithm     |
+|    - Bus Mastering DMA activation via Command register bit 2                      |
++-----------------------------------------------------------------------------------+
+|  Network Hardware Abstraction (drivers/net.c, include/drivers/net.h):             |
+|    - net_send_packet(), net_register_receive_callback(), net_get_mac()            |
+|    - Standard 6-byte Ethernet MAC and RX/TX throughput statistics                 |
++-----------------------------------------------------------------------------------+
+|  Network Interface Card Drivers:                                                  |
+|    - Intel 82540EM Gigabit (drivers/e1000.c):                                     |
+|      * BAR0 MMIO mapping (128 KB window, PAGE_PCD cache-disabled)                 |
+|      * EEPROM / RAL0 MAC address reading                                          |
+|      * 32 RX & 16 TX DMA descriptor rings (2048-byte physical packet buffers)     |
+|      * PIC IRQ interrupt dispatcher with ICR status acknowledgment                |
+|    - Realtek RTL8139 Fast Ethernet (drivers/rtl8139.c):                           |
+|      * Port I/O register control via BAR0/BAR1                                    |
+|      * 8 KB + 16B + 1.5 KB wrap margin circular receive ring                      |
+|      * 4 round-robin transmit slots (TSAD0..3, TSD0..3)                           |
++-----------------------------------------------------------------------------------+
+```
+
+---
+
+## 11. TCP/IP Protocol Stack & Web Engine Architecture (Milestone 11)
+
+```text
++-----------------------------------------------------------------------------------+
+|  Application Layer:                                                               |
+|    - Web Browser Lite (apps/store.c): URL bar, bookmarks, styled HTML rendering   |
+|    - Terminal CLI (apps/terminal.c): ifconfig, ping <host>, curl <url>            |
+|    - HTTP/1.0 Client (net/http.c): URL parsing, TCP socket connection, GET client |
+|    - DNS Client (net/dns.c): QNAME encoding, UDP port 53 query, A-record parser   |
++-----------------------------------------------------------------------------------+
+|  Transport Layer:                                                                 |
+|    - TCP Engine (net/tcp.c):                                                      |
+|      * 5-state FSM: CLOSED -> SYN_SENT -> ESTABLISHED -> FIN_WAIT -> CLOSED       |
+|      * 3-Way Handshake (SYN, SYN+ACK, ACK) and graceful teardown (FIN/ACK)        |
+|      * TCP 12-byte Pseudo-Header checksum calculation                             |
+|      * 8 KB circular sliding receive buffer per socket                            |
+|    - UDP Engine (net/udp.c): 8-byte header, port demuxing table (16 sockets)      |
++-----------------------------------------------------------------------------------+
+|  Network Layer:                                                                   |
+|    - IPv4 Protocol (net/ipv4.c):                                                  |
+|      * 20-byte standard header with 16-bit one's complement Internet checksum     |
+|      * Subnet routing (10.0.2.0/24 direct, default gateway 10.0.2.2)              |
+|      * Protocol demultiplexer: ICMP (1), TCP (6), UDP (17)                        |
+|    - ICMP Protocol (net/icmp.c): Echo Request auto-responder & icmp_ping() RTT    |
++-----------------------------------------------------------------------------------+
+|  Link Layer:                                                                      |
+|    - Ethernet II (net/ethernet.c): 14-byte frame, EtherType demux (ARP/IPv4), pad |
+|    - ARP Protocol (net/arp.c): RFC 826 request broadcast, auto-reply, 16-entry LRU|
++-----------------------------------------------------------------------------------+
+|  Device & Hardware Bridge:                                                        |
+|    - Network Device Layer (net/netdev.c): eth0 interface, TX/RX metrics counters  |
+|    - Virtual NAT Responder Engine: RFC-compliant emulation for offline/testing    |
+|    - Physical Drivers: Intel E1000 Gigabit & Realtek RTL8139 Fast Ethernet        |
++-----------------------------------------------------------------------------------+
+```
+
+
+
 
 
 

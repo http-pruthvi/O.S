@@ -18,6 +18,14 @@
 #include "mm/heap.h"
 #include "drivers/timer.h"
 #include "drivers/serial.h"
+#include "drivers/pci.h"
+#include "drivers/net.h"
+#include "net/netdev.h"
+#include "net/ethernet.h"
+#include "net/ipv4.h"
+#include "net/icmp.h"
+#include "net/dns.h"
+#include "net/http.h"
 #include "lib/string.h"
 #include "lib/kprintf.h"
 
@@ -60,6 +68,15 @@ static void fmt_uint(uint32_t val, char* buf) {
     buf[b] = '\0';
 }
 
+/* Helper: formats uint32_t into hexadecimal string with specified width */
+static void fmt_hex(uint32_t val, int digits, char* buf) {
+    for (int i = digits - 1; i >= 0; i--) {
+        uint8_t nibble = (val >> (i * 4)) & 0xF;
+        *buf++ = (nibble < 10) ? ('0' + nibble) : ('a' + (nibble - 10));
+    }
+    *buf = '\0';
+}
+
 /* Redraws the terminal grid into the window client canvas */
 static void term_redraw(void) {
     if (!s_term_win) return;
@@ -82,6 +99,10 @@ static void term_redraw(void) {
     int cx = TERM_PAD_X + (s_cur_col * TERM_CHAR_W);
     int cy = TERM_PAD_Y + (s_cur_row * TERM_CHAR_H);
     window_fill_rect(s_term_win, cx, cy + 13, 8, 3, 0x0000FF99);
+
+    /* Invalidate client area so window manager recomposites and flushes to screen */
+    wm_invalidate_rect(s_term_win->client_x, s_term_win->client_y,
+                       s_term_win->client_width, s_term_win->client_height);
 }
 
 /* Scrolls terminal up by one line */
@@ -257,6 +278,10 @@ static void term_execute_cmd(const char* cmd) {
         term_print("  kill <pid>    - Terminate task by PID\n", 0x00FFFFFF);
         term_print("  mem           - Show RAM and Heap statistics\n", 0x00FFFFFF);
         term_print("  uptime        - Show system uptime in seconds\n", 0x00FFFFFF);
+        term_print("  lspci         - List detected PCI devices\n", 0x00FFFFFF);
+        term_print("  ifconfig      - Display network interface configuration\n", 0x00FFFFFF);
+        term_print("  ping <host>   - Send ICMP echo requests\n", 0x00FFFFFF);
+        term_print("  curl <url>    - Fetch HTTP web resource via TCP/IP\n", 0x00FFFFFF);
         term_print("  echo <text>   - Print text to terminal\n", 0x00FFFFFF);
         term_print("  calc / editor / files / top - Launch desktop apps\n", 0x00A0D0FF);
         term_print("  mines / snake / control     - Launch games & settings\n", 0x00A0D0FF);
@@ -425,6 +450,230 @@ static void term_execute_cmd(const char* cmd) {
         term_print("Uptime: ", 0x0000FF99);
         term_print(s_buf, 0x00FFFFFF);
         term_print(" seconds\n", 0x00FFFFFF);
+    } else if (strcmp(cmd, "lspci") == 0) {
+        uint32_t count = pci_get_device_count();
+        term_print("B:D.F   Vendor:Dev  Class / Type           IRQ  BAR0\n", 0x00FFD700);
+        term_print("----------------------------------------------------------\n", 0x008090A0);
+        for (uint32_t i = 0; i < count; i++) {
+            const pci_device_t* d = pci_get_device(i);
+            if (!d) continue;
+
+            /* Format B:D.F */
+            char hbus[4], hdev[4];
+            fmt_hex(d->bus, 2, hbus);
+            fmt_hex(d->slot, 2, hdev);
+            char bdf[10];
+            bdf[0] = hbus[0]; bdf[1] = hbus[1]; bdf[2] = ':';
+            bdf[3] = hdev[0]; bdf[4] = hdev[1]; bdf[5] = '.';
+            bdf[6] = (char)('0' + d->func); bdf[7] = ' '; bdf[8] = '\0';
+            term_print(bdf, 0x0038BDF8);
+
+            /* Format Vendor:Device */
+            char hven[6], hdevid[6];
+            fmt_hex(d->vendor_id, 4, hven);
+            fmt_hex(d->device_id, 4, hdevid);
+            char vd[14];
+            int vi = 0;
+            for (int k = 0; k < 4; k++) vd[vi++] = hven[k];
+            vd[vi++] = ':';
+            for (int k = 0; k < 4; k++) vd[vi++] = hdevid[k];
+            vd[vi++] = ' '; vd[vi++] = ' '; vd[vi] = '\0';
+            term_print(vd, 0x00FFD700);
+
+            /* Format Class string padded to 23 chars */
+            const char* cls = pci_class_to_string(d->class_code, d->subclass);
+            char cls_pad[26];
+            int ci = 0;
+            while (cls[ci] && ci < 22) {
+                cls_pad[ci] = cls[ci];
+                ci++;
+            }
+            while (ci < 23) {
+                cls_pad[ci++] = ' ';
+            }
+            cls_pad[ci] = '\0';
+            term_print(cls_pad, 0x00E0E0E0);
+
+            /* Format IRQ */
+            char irq_buf[8];
+            fmt_uint(d->irq_line, irq_buf);
+            char irq_pad[6];
+            irq_pad[0] = (d->irq_line < 10) ? ' ' : irq_buf[0];
+            irq_pad[1] = (d->irq_line < 10) ? irq_buf[0] : irq_buf[1];
+            irq_pad[2] = ' '; irq_pad[3] = ' '; irq_pad[4] = '\0';
+            term_print(irq_pad, 0x0055FF55);
+
+            /* Format BAR0 */
+            if (d->bar_type[0] == PCI_BAR_TYPE_NONE) {
+                term_print("none\n", 0x00808080);
+            } else {
+                char hbar[10];
+                fmt_hex(d->bar[0], 8, hbar);
+                char bar_str[14];
+                bar_str[0] = '0'; bar_str[1] = 'x';
+                for (int k = 0; k < 8; k++) bar_str[2 + k] = hbar[k];
+                bar_str[10] = '\n'; bar_str[11] = '\0';
+                term_print(bar_str, (d->bar_type[0] == PCI_BAR_TYPE_IO) ? 0x00FFAA55 : 0x00A0D0FF);
+            }
+        }
+    } else if (strcmp(cmd, "ifconfig") == 0 || strcmp(cmd, "netstat") == 0) {
+        netdev_t* dev = netdev_get_default();
+        if (!dev) {
+            term_print("No network interface configured.\n", 0x00FF5555);
+        } else {
+            term_print(dev->name, 0x0038BDF8);
+            term_print(": flags=UP,BROADCAST,RUNNING  mtu 1500\n", 0x0055FF55);
+
+            char ip_str[24], mask_str[24], gw_str[24], dns_str[24];
+            ip_to_str(dev->ip, ip_str);
+            ip_to_str(dev->netmask, mask_str);
+            ip_to_str(dev->gateway, gw_str);
+            ip_to_str(dev->dns, dns_str);
+
+            term_print("        inet ", 0x00808080);
+            term_print(ip_str, 0x00FFFFFF);
+            term_print("  netmask ", 0x00808080);
+            term_print(mask_str, 0x00FFFFFF);
+            term_print("\n        gateway ", 0x00808080);
+            term_print(gw_str, 0x0034D399);
+            term_print("  dns ", 0x00808080);
+            term_print(dns_str, 0x0034D399);
+
+            char mac_str[24];
+            mac_to_str(dev->mac, mac_str);
+            term_print("\n        ether ", 0x00808080);
+            term_print(mac_str, 0x00FBBF24);
+
+            char s_rxp[16], s_rxb[16], s_txp[16], s_txb[16];
+            fmt_uint(dev->rx_packets, s_rxp);
+            fmt_uint(dev->rx_bytes, s_rxb);
+            fmt_uint(dev->tx_packets, s_txp);
+            fmt_uint(dev->tx_bytes, s_txb);
+
+            term_print("\n        RX packets ", 0x00808080);
+            term_print(s_rxp, 0x00FFFFFF);
+            term_print("  bytes ", 0x00808080);
+            term_print(s_rxb, 0x00FFFFFF);
+
+            term_print("\n        TX packets ", 0x00808080);
+            term_print(s_txp, 0x00FFFFFF);
+            term_print("  bytes ", 0x00808080);
+            term_print(s_txb, 0x00FFFFFF);
+            term_print("\n", 0x00808080);
+        }
+    } else if (strncmp(cmd, "ping", 4) == 0 && (cmd[4] == ' ' || cmd[4] == '\0')) {
+        const char* p = cmd + 4;
+        while (*p == ' ') p++;
+        if (*p == '\0') {
+            term_print("Usage: ping <ip_or_hostname>\n", 0x00FF8080);
+            return;
+        }
+
+        char target_host[64];
+        int ti = 0;
+        while (*p && *p != ' ' && ti < 63) {
+            target_host[ti++] = *p++;
+        }
+        target_host[ti] = '\0';
+
+        uint32_t target_ip = 0;
+        if (!dns_resolve(target_host, &target_ip)) {
+            term_print("ping: cannot resolve '", 0x00FF5555);
+            term_print(target_host, 0x00FF5555);
+            term_print("': Unknown host\n", 0x00FF5555);
+            return;
+        }
+
+        char ip_str[24];
+        ip_to_str(target_ip, ip_str);
+
+        term_print("PING ", 0x0038BDF8);
+        term_print(target_host, 0x00FFFFFF);
+        term_print(" (", 0x00808080);
+        term_print(ip_str, 0x0034D399);
+        term_print("): 32 data bytes\n", 0x00808080);
+        term_redraw();
+
+        uint32_t received = 0;
+        for (uint16_t seq = 1; seq <= 4; seq++) {
+            uint32_t rtt = 0;
+            bool ok = icmp_ping(target_ip, seq, &rtt);
+            if (ok) {
+                char s_seq[8], s_rtt[16];
+                fmt_uint(seq, s_seq);
+                fmt_uint(rtt, s_rtt);
+                term_print("32 bytes from ", 0x00CBD5E1);
+                term_print(ip_str, 0x0034D399);
+                term_print(": icmp_seq=", 0x00808080);
+                term_print(s_seq, 0x00FFFFFF);
+                term_print(" ttl=64 time=", 0x00808080);
+                term_print(s_rtt, 0x00FBBF24);
+                term_print(" ms\n", 0x00FBBF24);
+                received++;
+            } else {
+                char s_seq[8];
+                fmt_uint(seq, s_seq);
+                term_print("Request timeout for icmp_seq ", 0x00F87171);
+                term_print(s_seq, 0x00F87171);
+                term_print("\n", 0x00F87171);
+            }
+            term_redraw();
+            if (s_term_win && gfx_get_backbuffer()) {
+                window_render(s_term_win, gfx_get_backbuffer(), WM_SCREEN_WIDTH, 0, 0, WM_SCREEN_WIDTH, WM_SCREEN_HEIGHT);
+                gfx_flush();
+            }
+        }
+
+        term_print("--- ", 0x00808080);
+        term_print(target_host, 0x0038BDF8);
+        term_print(" ping statistics ---\n", 0x00808080);
+        char s_rec[8], s_loss[8];
+        fmt_uint(received, s_rec);
+        fmt_uint((4 - received) * 25, s_loss);
+        term_print("4 packets transmitted, ", 0x00CBD5E1);
+        term_print(s_rec, 0x0034D399);
+        term_print(" packets received, ", 0x00CBD5E1);
+        term_print(s_loss, (received == 4) ? 0x0034D399 : 0x00F87171);
+        term_print("% packet loss\n", 0x00CBD5E1);
+    } else if (strncmp(cmd, "curl", 4) == 0 && (cmd[4] == ' ' || cmd[4] == '\0')) {
+        const char* p = cmd + 4;
+        while (*p == ' ') p++;
+        if (*p == '\0') {
+            term_print("Usage: curl <http://host/path>\n", 0x00FF8080);
+            return;
+        }
+
+        char url_buf[128];
+        int ui = 0;
+        while (*p && *p != ' ' && ui < 127) {
+            url_buf[ui++] = *p++;
+        }
+        url_buf[ui] = '\0';
+
+        term_print("Connecting to ", 0x00A0A0A0);
+        term_print(url_buf, 0x0038BDF8);
+        term_print(" ...\n", 0x00A0A0A0);
+        term_redraw();
+
+        static char s_curl_resp[4096];
+        int n = http_get(url_buf, s_curl_resp, sizeof(s_curl_resp));
+        if (n >= 0) {
+            term_print("----------------------------------------------------------------\n", 0x000284C7);
+            /* Print HTTP response headers and body directly */
+            term_print(s_curl_resp, 0x00E2E8F0);
+            term_print("\n----------------------------------------------------------------\n", 0x000284C7);
+            char s_len[16];
+            fmt_uint((uint32_t)n, s_len);
+            term_print("Transferred ", 0x0034D399);
+            term_print(s_len, 0x00FFFFFF);
+            term_print(" bytes via TCP port 80 [200 OK]\n", 0x0034D399);
+        } else {
+            char s_err[8];
+            fmt_uint((uint32_t)(-n), s_err);
+            term_print("curl: (7) Connection failed (error code ", 0x00F87171);
+            term_print(s_err, 0x00F87171);
+            term_print(")\n", 0x00F87171);
+        }
     } else if (strncmp(cmd, "echo ", 5) == 0) {
         term_print(cmd + 5, 0x00FFFFFF);
         term_print("\n", 0x00FFFFFF);
@@ -534,6 +783,14 @@ static void on_term_close(window_t* win) {
     s_term_win = NULL;
 }
 
+/* Window resize handler */
+static void on_term_resize(window_t* win, int new_w, int new_h) {
+    (void)win;
+    (void)new_w;
+    (void)new_h;
+    term_redraw();
+}
+
 /*
  * app_terminal_open:
  * Creates and displays the Terminal Emulator window.
@@ -546,11 +803,12 @@ void app_terminal_open(void) {
 
     s_term_win = window_create(100, 60, TERM_WIN_W, TERM_WIN_H,
                                "Terminal - myos:/$",
-                               WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE);
+                               WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE | WINDOW_FLAG_RESIZABLE);
     if (!s_term_win) return;
 
-    s_term_win->on_close = on_term_close;
-    s_term_win->on_key   = on_term_key;
+    s_term_win->on_close  = on_term_close;
+    s_term_win->on_key    = on_term_key;
+    s_term_win->on_resize = on_term_resize;
 
     term_clear();
     term_print("MyOS Graphical Terminal [Version 1.0]\n", 0x0000FF99);

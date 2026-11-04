@@ -97,6 +97,6 @@ Keep a running docs/architecture.md that is updated as layers get added.
 - M7 (DONE): Processes & Scheduler: kernel tasks, 8 KB stacks, assembly context switch, preemptive round-robin scheduler (100 ms quantum), timed sleep queue, and zombie reaping
 - M8 (DONE): Docs, report, demo video script, presentation slides, viva defense guide (All Milestones M1-M8 Complete)
 - M9 (DONE): Storage & System Apps: VFS abstraction, in-memory RamFS, Graphical File Explorer, Graphical Task Manager, Desktop Terminal Emulator CLI, and Notepad VFS save/load
-- M10 (IN PROGRESS): PCI Bus & Network Interface Card (RTL8139 / E1000)
-- M11 (PLANNED): TCP/IP Stack (ARP, IPv4, ICMP, UDP, TCP) & Desktop Web Browser
+- M10 (DONE): PCI Bus & Network Interface Card (RTL8139 / E1000): PCI configuration space access (Mechanism #1), bus enumeration, BAR probing/sizing, Intel 82540EM Gigabit NIC driver (MMIO, DMA rings, EEPROM MAC, IRQ handling), Realtek RTL8139 Fast Ethernet driver (I/O ports, circular RX ring, 4 TX slots), generic net hardware interface, and Terminal CLI 'lspci' / 'ifconfig'.
+- M11 (DONE): TCP/IP Protocol Stack & Web Browser: Ethernet II framing, RFC 826 ARP (request/reply/cache), RFC 791 IPv4 (one's complement checksum, routing, dispatch), RFC 792 ICMP (Echo auto-responder, ping RTT timing), RFC 768 UDP & RFC 1035 DNS client (QNAME encoding, A-record resolver), RFC 793 TCP (3-way handshake, 5-state FSM, sliding buffer, FIN close), RFC 1945 HTTP/1.0 client, Web Browser Lite (URL bar, bookmarks, styled HTML tag rendering, offline fallback), and Terminal CLI 'ifconfig', 'ping', 'curl'.
 - M12 (PLANNED): Audio Subsystem (Sound Blaster 16) & Ring 3 User Mode / Syscalls
