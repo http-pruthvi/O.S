@@ -2,7 +2,7 @@
 
 ## 1. Goal and What Was Built
 
-Milestone 11 delivers a complete, standards-compliant, modular **TCP/IP Protocol Stack** written entirely from scratch in freestanding C (gnu11, zero libc) for our 32-bit x86 protected-mode hobby OS. It layers directly on top of Milestone 10's hardware NIC drivers (Intel E1000 / Realtek RTL8139) and introduces interactive networking utilities to both the desktop GUI and command line:
+Milestone 11 implements a freestanding **TCP/IP Protocol Stack** in C (gnu11, zero libc) for our 32-bit x86 protected-mode hobby OS. Layered on Milestone 10's NIC drivers (Intel E1000 and Realtek RTL8139), it provides networking utilities for both the desktop GUI and terminal CLI:
 
 1. **Ethernet II Link Layer (`include/net/ethernet.h`, `src/net/ethernet.c`)**:
    - Standard 14-byte IEEE 802.3 Ethernet II frame structure (`dest_mac[6]`, `src_mac[6]`, `ethertype[2]`).
@@ -13,7 +13,7 @@ Milestone 11 delivers a complete, standards-compliant, modular **TCP/IP Protocol
 2. **Address Resolution Protocol (ARP - RFC 826) (`include/net/arp.h`, `src/net/arp.c`)**:
    - 28-byte ARP packet structure for mapping 32-bit IPv4 addresses to 48-bit Ethernet MACs.
    - In-memory 16-entry LRU/timestamped ARP cache table.
-   - Incoming packet handler: automatically answers ARP requests targeting our guest IP (`10.0.2.15`), and updates the ARP cache on replies.
+   - Incoming packet handler: answers ARP requests targeting the guest IP (`10.0.2.15`), and updates the ARP cache on replies.
    - Lookup and request engine (`arp_lookup`, `arp_request`, `arp_insert`) with pre-seeded gateway and DNS MACs.
 
 3. **Internet Protocol Version 4 (IPv4 - RFC 791) (`include/net/ipv4.h`, `src/net/ipv4.c`)**:
@@ -25,13 +25,13 @@ Milestone 11 delivers a complete, standards-compliant, modular **TCP/IP Protocol
 
 4. **Internet Control Message Protocol (ICMP - RFC 792) (`include/net/icmp.h`, `src/net/icmp.c`)**:
    - 8-byte ICMP Echo message header (Type, Code, Checksum, Identifier, Sequence Number).
-   - Auto-responder: automatically replies to incoming Echo Requests (Type 8) with valid Echo Replies (Type 0).
+   - Auto-responder: replies to incoming Echo Requests (Type 8) with valid Echo Replies (Type 0).
    - Diagnostic `icmp_ping()` function: sends Echo Requests with 32-byte payload, measures round-trip time (RTT) in milliseconds using the PIT timer (100 Hz), and handles configurable timeouts.
 
 5. **User Datagram Protocol (UDP - RFC 768) (`include/net/udp.h`, `src/net/udp.c`)**:
    - Standard 8-byte UDP datagram header (`src_port`, `dest_port`, `length`, `checksum`).
    - Port demultiplexing table supporting up to 16 bound callback listeners (`udp_bind`, `udp_unbind`).
-   - Low-latency datagram transmission (`udp_send`) and dispatch (`udp_handle_packet`).
+   - Datagram transmission (`udp_send`) and dispatch (`udp_handle_packet`).
 
 6. **Domain Name System (DNS - RFC 1035) Client (`include/net/dns.h`, `src/net/dns.c`)**:
    - 12-byte DNS message header and query construction.
@@ -43,11 +43,11 @@ Milestone 11 delivers a complete, standards-compliant, modular **TCP/IP Protocol
 7. **Transmission Control Protocol (TCP - RFC 793) (`include/net/tcp.h`, `src/net/tcp.c`)**:
    - Standard 20-byte TCP segment header with sequence and acknowledgement numbers, data offset, flags (`SYN`, `ACK`, `FIN`, `RST`, `PSH`, `URG`), and window size.
    - TCP Pseudo-Header 16-bit checksum calculation incorporating source IP, destination IP, protocol (6), and TCP segment length.
-   - Full 5-state connection state machine: `CLOSED` -> `SYN_SENT` -> `ESTABLISHED` -> `FIN_WAIT` -> `CLOSED`.
+   - 5-state connection state machine: `CLOSED` -> `SYN_SENT` -> `ESTABLISHED` -> `FIN_WAIT` -> `CLOSED`.
    - 3-Way Handshake client engine (`tcp_connect`).
-   - Reliable streaming data transmission (`tcp_send`) with PSH+ACK.
+   - Streaming data transmission (`tcp_send`) with PSH+ACK.
    - Buffered stream reception (`tcp_recv`) with 8 KB circular socket buffer and timeout handling.
-   - Graceful connection teardown (`tcp_close`) via FIN/ACK sequence.
+   - Connection teardown (`tcp_close`) via FIN/ACK sequence.
 
 8. **Hypertext Transfer Protocol (HTTP/1.0 - RFC 1945) Client (`include/net/http.h`, `src/net/http.c`)**:
    - URL parser: extracts hostname, optional port (defaults to 80), and resource path.
@@ -56,14 +56,14 @@ Milestone 11 delivers a complete, standards-compliant, modular **TCP/IP Protocol
 9. **Network Device Abstraction & Virtual NAT Responder (`include/net/netdev.h`, `src/net/netdev.c`)**:
    - Unifies interface state (`eth0`), MAC address, IP, Netmask, Gateway, DNS, and TX/RX throughput statistics.
    - Ingests packets from hardware drivers (`e1000`, `rtl8139`) via `net_register_receive_callback`.
-   - Built-in Virtual NAT Bridge Responder: enables 100% reliable local test execution in VirtualBox, simulation, and offline modes by responding to ARP requests, ICMP pings, DNS queries, and serving rich HTTP HTML pages.
+   - Virtual NAT Responder: handles ARP, ICMP Echo, DNS queries, and HTTP requests when running without external routing, feeding RFC-compliant replies directly to `net_receive_packet()`.
 
 10. **Application Integration**:
     - **Web Browser Lite (`src/apps/store.c`)**:
       - Interactive URL Address Bar with `"Go ->"` button and `"< Back"` navigation.
       - One-click Bookmark buttons for `[example.com]`, `[myos.org/news]`, and `[10.0.2.2/demo]`.
-      - Styled HTML rendering engine: displays bold `<h1>` titles with accent rules, `<h2>` headers, `<p>` body text, `<a>` link pills, `<pre>`/`<code>` dark code containers, and live connection status bar.
-      - Graceful offline fallback portal.
+      - Styled HTML rendering engine: displays `<h1>` titles with accent rules, `<h2>` headers, `<p>` body text, `<a>` link pills, `<pre>`/`<code>` code containers, and connection status bar.
+      - Offline fallback portal.
     - **Terminal CLI Networking Commands (`src/apps/terminal.c`)**:
       - `ifconfig`: Displays interface name, link flags, MAC address, IPv4 address, Netmask, Gateway, DNS, and cumulative RX/TX packet & byte throughput counters.
       - `ping <host>`: Resolves target hostname via DNS, transmits 4 ICMP Echo Requests, logs real-time sequence, TTL, and RTT in milliseconds, and prints packet loss statistics.
@@ -149,7 +149,7 @@ sequenceDiagram
     Note over TCP: State: CLOSED
 
     TCP-->>User: Deliver complete HTTP response buffer
-    Note over User: Browser parses HTML tags & renders <h1>, <p>, <a> into viewport!
+    Note over User: Browser parses HTML tags and renders elements into viewport
 ```
 
 ---
@@ -157,23 +157,23 @@ sequenceDiagram
 ## 3. Key Concepts Explained Simply
 
 ### 1. Ethernet II Frame
-An Ethernet II frame is the fundamental unit of data transmission across physical local area networks. It consists of a 14-byte header: a 6-byte Destination MAC address, a 6-byte Source MAC address, and a 2-byte EtherType field. The EtherType tells the receiving operating system which protocol is contained in the payload: `0x0806` indicates an ARP packet, and `0x0800` indicates an IPv4 datagram. Minimum Ethernet frames are 60 bytes long (padded with zeros if shorter).
+An Ethernet II frame is the standard data link unit on Ethernet networks. It consists of a 14-byte header: a 6-byte Destination MAC address, a 6-byte Source MAC address, and a 2-byte EtherType field. The EtherType tells the receiving operating system which protocol is contained in the payload: `0x0806` indicates an ARP packet, and `0x0800` indicates an IPv4 datagram. Minimum Ethernet frames are 60 bytes long (padded with zeros if shorter).
 
 ### 2. Address Resolution Protocol (ARP)
-Computers on an Ethernet network do not route data using IP addresses directly—they transmit to physical 48-bit MAC addresses. ARP bridges the gap between Layer 3 (IP) and Layer 2 (Ethernet). When our OS needs to send an IP packet to `10.0.2.2`, it checks its internal ARP Cache. If absent, it broadcasts an ARP Request (`FF:FF:FF:FF:FF:FF`): *"Who has IP 10.0.2.2? Tell 10.0.2.15"*. The owner replies with its MAC address, which our OS caches for subsequent transmissions.
+Computers on an Ethernet network do not route data using IP addresses directly; they transmit to physical 48-bit MAC addresses. ARP bridges the gap between Layer 3 (IP) and Layer 2 (Ethernet). When our OS needs to send an IP packet to `10.0.2.2`, it checks its internal ARP Cache. If absent, it broadcasts an ARP Request (`FF:FF:FF:FF:FF:FF`): *"Who has IP 10.0.2.2? Tell 10.0.2.15"*. The owner replies with its MAC address, which our OS caches for subsequent transmissions.
 
 ### 3. IPv4 and Internet Checksum
 IPv4 is a connectionless network protocol responsible for routing packets across interconnected networks. Every IPv4 header includes a 16-bit Internet Checksum. It is computed by dividing the 20-byte header into 16-bit integers, summing them up, adding any overflow carry bits back into the lower 16 bits (one's complement sum), and inverting the result. If a single bit is flipped during transmission, the checksum recalculation yields a non-zero value, and the damaged packet is dropped.
 
 ### 4. UDP vs. TCP
-- **UDP (User Datagram Protocol)**: A connectionless, lightweight transport protocol. Packets are fired off without handshakes or delivery guarantees. Used where low latency is critical, such as DNS lookups.
+- **UDP (User Datagram Protocol)**: A connectionless, lightweight transport protocol that transmits datagrams without establishing a connection or guaranteeing delivery. Used for low-latency operations such as DNS queries.
 - **TCP (Transmission Control Protocol)**: A connection-oriented, reliable stream protocol. Guarantees in-order delivery, error-checking, and flow control. Packets are acknowledged with sequence and ACK numbers; lost packets are automatically retransmitted.
 
 ### 5. TCP 3-Way Handshake
 Before data can flow between client and server, a synchronized session must be established:
 1. **SYN**: Client picks an initial sequence number (ISN) and sends a segment with the `SYN` flag set.
 2. **SYN+ACK**: Server responds with its own sequence number and acknowledges the client's sequence (`Ack = Client_Seq + 1`).
-3. **ACK**: Client acknowledges the server's sequence (`Ack = Server_Seq + 1`). The session enters `ESTABLISHED` state, and live application data (such as HTTP requests) can now be transmitted.
+3. **ACK**: Client acknowledges the server's sequence (`Ack = Server_Seq + 1`). The session enters `ESTABLISHED` state, and application data (such as HTTP requests) can be transmitted.
 
 ### 6. DNS QNAME Encoding
 In DNS queries, domain names like `"example.com"` are not encoded with dots. Instead, each label is preceded by a single byte denoting its length:
@@ -295,7 +295,7 @@ Launch Terminal from the Desktop or Start Menu:
 #### Testing Web Browser Lite
 1. Launch **Web App Store** from desktop or Start Menu.
 2. Launch **Web Browser Lite**.
-3. The browser automatically navigates to `http://example.com`, resolves DNS, performs a 3-way TCP handshake, issues an HTTP GET, and renders the live styled HTML document:
+3. The browser navigates to `http://example.com`, resolves DNS, performs a 3-way TCP handshake, issues an HTTP GET, and renders the HTML document:
    - Cyan `<h1>Example Domain</h1>` heading with horizontal accent bar.
    - White paragraph body text.
    - Blue clickable link pill `-> [Link] Read Latest OS Network News`.
@@ -325,4 +325,4 @@ Launch Terminal from the Desktop or Start Menu:
 **Answer:** DNS operates primarily over UDP port 53. The client constructs a binary DNS query packet containing a 12-byte header with a Transaction ID and Recursion Desired flag (`0x0100`). The domain name (e.g., `"example.com"`) is converted into QNAME format: each label is preceded by its byte length (`\x07example\x03com\x00`). The query specifies Question Type 1 (`A` record) and Class 1 (`IN`). When the server responds, our parser skips the Question section, iterates over the Answer Resource Records, handles compressed label pointers (`0xC0xx`), matches Type `A`, and extracts the 4-byte IPv4 address into host memory.
 
 ### Q5: How does your OS guarantee networking functionality if the VirtualBox VM has no external host bridge or internet access?
-**Answer:** We designed an architectural dual-path system: our stack is fully hooked into physical PCI drivers (`Intel E1000` and `Realtek RTL8139`), but also features a built-in **Virtual NAT Bridge Responder** (`netdev_simulate_response()` in `src/net/netdev.c`). Every packet transmitted by the upper stack (ARP requests, ICMP echo requests, DNS queries, TCP SYN/PSH/FIN) is processed through real binary serialization, checksum calculation, and frame packaging. If running in a virtual or offline sandbox, the responder engine ingests the outgoing frame, parses it according to RFC standards, and delivers valid Ethernet II responses back through `net_receive_packet()`. This ensures that `ping`, `curl`, `ifconfig`, and the graphical Web Browser Lite execute 100% reliably in any demonstration environment without hanging or network timeouts.
+**Answer:** The network stack registers packet transmission and reception callbacks with the underlying PCI NIC driver. When operating without an external gateway or network link, `netdev.c` routes outbound traffic through an internal fallback handler (`netdev_simulate_response()`). All outbound frames—ARP requests, ICMP echo requests, DNS queries, and TCP segments—are constructed with standard binary headers and valid checksums. The internal handler inspects the destination and replies with RFC-compliant Ethernet II frames directly into `net_receive_packet()`. This allows `ping`, `curl`, and the browser to complete full protocol handshakes locally.
