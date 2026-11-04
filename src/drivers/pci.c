@@ -343,11 +343,11 @@ void pci_print_devices(void) {
         pci_device_t* d = &s_pci_devices[i];
         const char* class_str = pci_class_to_string(d->class_code, d->subclass);
 
-        kprintf("[%02x:%02x.%u] %04x:%04x | %-24s | IRQ %2u | BAR0: 0x%08x (%s)\n",
-                d->bus, d->slot, d->func,
-                d->vendor_id, d->device_id,
-                class_str,
-                d->irq_line,
+        kprintf("[%02x:%02x.%u] %04x:%04x | %-24s | IRQ %u | BAR0: 0x%08x (%s)\n",
+                (uint32_t)d->bus, (uint32_t)d->slot, (uint32_t)d->func,
+                (uint32_t)d->vendor_id, (uint32_t)d->device_id,
+                class_str ? class_str : "Unknown",
+                (uint32_t)d->irq_line,
                 d->bar[0],
                 d->bar_type[0] == PCI_BAR_TYPE_IO ? "PIO" :
                 d->bar_type[0] == PCI_BAR_TYPE_MMIO ? "MMIO" : "None");

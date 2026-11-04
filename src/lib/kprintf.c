@@ -98,6 +98,13 @@ int vkprintf(const char* fmt, va_list args) {
         /* Format specifier encountered */
         i++;
 
+        /* Optional left-align flag */
+        bool left_align = false;
+        if (fmt[i] == '-') {
+            left_align = true;
+            i++;
+        }
+
         /* Optional zero-padding flag */
         bool pad_zeros = false;
         if (fmt[i] == '0') {
@@ -129,14 +136,23 @@ int vkprintf(const char* fmt, va_list args) {
                 int slen = 0;
                 while (str[slen]) slen++;
                 int pad = width - slen;
-                while (pad > 0) {
-                    kputc(' ');
-                    count++;
-                    pad--;
+                if (!left_align) {
+                    while (pad > 0) {
+                        kputc(' ');
+                        count++;
+                        pad--;
+                    }
                 }
                 while (*str) {
                     kputc(*str++);
                     count++;
+                }
+                if (left_align) {
+                    while (pad > 0) {
+                        kputc(' ');
+                        count++;
+                        pad--;
+                    }
                 }
                 break;
             }
