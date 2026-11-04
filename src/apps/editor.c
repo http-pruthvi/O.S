@@ -101,26 +101,33 @@ static void update_status_bar(void) {
 static void redraw_editor_canvas(void) {
     if (!s_editor_win) return;
 
+    int canvas_w = s_editor_win->client_width - 20;
+    int canvas_h = s_editor_win->client_height - 60;
+    if (canvas_w < 60) canvas_w = 60;
+    if (canvas_h < 40) canvas_h = 40;
+    int visible_lines = (canvas_h - 12) / EDITOR_LINE_HEIGHT;
+    if (visible_lines < 1) visible_lines = 1;
+
     /* 1. Clear text background to clean white */
     window_fill_rect(s_editor_win, EDITOR_CANVAS_X, EDITOR_CANVAS_Y,
-                     EDITOR_CANVAS_W, EDITOR_CANVAS_H, 0x00FFFFFF);
+                     canvas_w, canvas_h, 0x00FFFFFF);
 
     /* 2. Sunken frame border */
     window_draw_rect(s_editor_win, EDITOR_CANVAS_X, EDITOR_CANVAS_Y,
-                     EDITOR_CANVAS_W, EDITOR_CANVAS_H, 0x00808080);
+                     canvas_w, canvas_h, 0x00808080);
 
     /* 3. Adjust scroll offset if cursor has moved outside visible window */
     if (s_cursor_row < s_scroll_top) {
         s_scroll_top = s_cursor_row;
-    } else if (s_cursor_row >= s_scroll_top + EDITOR_VISIBLE_LINES) {
-        s_scroll_top = s_cursor_row - EDITOR_VISIBLE_LINES + 1;
+    } else if (s_cursor_row >= s_scroll_top + visible_lines) {
+        s_scroll_top = s_cursor_row - visible_lines + 1;
     }
 
     /* 4. Draw visible text lines */
     int text_start_x = EDITOR_CANVAS_X + 6;
     int text_start_y = EDITOR_CANVAS_Y + 6;
 
-    for (int i = 0; i < EDITOR_VISIBLE_LINES; i++) {
+    for (int i = 0; i < visible_lines; i++) {
         int line_idx = s_scroll_top + i;
         if (line_idx >= s_num_lines) break;
 
@@ -130,11 +137,11 @@ static void redraw_editor_canvas(void) {
     }
 
     /* 5. Draw caret cursor */
-    if (s_cursor_row >= s_scroll_top && s_cursor_row < s_scroll_top + EDITOR_VISIBLE_LINES) {
+    if (s_cursor_row >= s_scroll_top && s_cursor_row < s_scroll_top + visible_lines) {
         int caret_x = text_start_x + s_cursor_col * FONT_GLYPH_WIDTH;
         int caret_y = text_start_y + (s_cursor_row - s_scroll_top) * EDITOR_LINE_HEIGHT;
 
-        if (caret_x < EDITOR_CANVAS_X + EDITOR_CANVAS_W - 4) {
+        if (caret_x < EDITOR_CANVAS_X + canvas_w - 4) {
             window_fill_rect(s_editor_win, caret_x, caret_y, 2, FONT_GLYPH_HEIGHT, 0x00000000);
         }
     }
@@ -142,7 +149,7 @@ static void redraw_editor_canvas(void) {
     /* Invalidate editor canvas region */
     wm_invalidate_rect(s_editor_win->client_x + EDITOR_CANVAS_X,
                        s_editor_win->client_y + EDITOR_CANVAS_Y,
-                       EDITOR_CANVAS_W, EDITOR_CANVAS_H);
+                       canvas_w, canvas_h);
 
     /* Update metrics */
     update_status_bar();
@@ -358,6 +365,17 @@ static void on_editor_close(window_t* win) {
     s_lbl_status = NULL;
 }
 
+/* Window resize handler */
+static void on_editor_resize(window_t* win, int new_w, int new_h) {
+    (void)new_w;
+    (void)new_h;
+    if (s_lbl_status && win) {
+        s_lbl_status->y = win->client_height - 20;
+        s_lbl_status->width = win->client_width - 24;
+    }
+    redraw_editor_canvas();
+}
+
 /*
  * app_editor_open:
  * Creates and displays the Text Editor application window.
@@ -369,11 +387,12 @@ void app_editor_open(void) {
     }
 
     s_editor_win = window_create(160, 80, 520, 360, "Text Editor - Untitled",
-                                 WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE);
+                                 WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE | WINDOW_FLAG_RESIZABLE);
     if (!s_editor_win) return;
 
-    s_editor_win->on_close = on_editor_close;
-    s_editor_win->on_key   = on_editor_key;
+    s_editor_win->on_close  = on_editor_close;
+    s_editor_win->on_key    = on_editor_key;
+    s_editor_win->on_resize = on_editor_resize;
 
     /* 1. Toolbar Buttons */
     widget_add_to_window(s_editor_win, widget_create_button(10, 6, 75, 26, "New", on_btn_new, NULL));

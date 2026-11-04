@@ -45,6 +45,12 @@ window_t* window_create(int x, int y, int width, int height, const char* title, 
     win->client_height = height - WINDOW_TITLE_BAR_HEIGHT - WINDOW_BORDER_WIDTH;
 
     win->flags = flags | WINDOW_FLAG_VISIBLE;
+    win->is_maximized = false;
+    win->restore_x = x;
+    win->restore_y = y;
+    win->restore_width = width;
+    win->restore_height = height;
+
     const theme_t* init_th = theme_get_current();
     win->bg_color = init_th ? init_th->bg_window_client : 0x001F1F1F;
     win->next = NULL;
@@ -53,6 +59,8 @@ window_t* window_create(int x, int y, int width, int height, const char* title, 
     win->on_close = NULL;
     win->on_key = NULL;
     win->on_click = NULL;
+    win->on_right_click = NULL;
+    win->on_resize = NULL;
 
     /* Copy title safely */
     size_t i = 0;
@@ -207,6 +215,30 @@ window_hit_t window_hit_test(window_t* win, int sx, int sy) {
         return WINDOW_HIT_NONE;
     }
 
+    /* Resize border hit testing (active only for resizable, non-maximized windows) */
+    if ((win->flags & WINDOW_FLAG_RESIZABLE) && !win->is_maximized) {
+        /* Bottom-Right corner (10px corner hit box) */
+        if (sx >= win->x + win->width - 10 && sy >= win->y + win->height - 10) {
+            return WINDOW_HIT_RESIZE_BOTTOM_RIGHT;
+        }
+        /* Bottom-Left corner (10px corner hit box) */
+        if (sx < win->x + 10 && sy >= win->y + win->height - 10) {
+            return WINDOW_HIT_RESIZE_BOTTOM_LEFT;
+        }
+        /* Bottom edge (5px border hit box) */
+        if (sy >= win->y + win->height - 5) {
+            return WINDOW_HIT_RESIZE_BOTTOM;
+        }
+        /* Left edge (5px border hit box) */
+        if (sx < win->x + 5) {
+            return WINDOW_HIT_RESIZE_LEFT;
+        }
+        /* Right edge (5px border hit box; only below title bar to avoid masking close button) */
+        if (sy >= win->y + WINDOW_TITLE_BAR_HEIGHT && sx >= win->x + win->width - 5) {
+            return WINDOW_HIT_RESIZE_RIGHT;
+        }
+    }
+
     /* Title bar area (top 28px) */
     if (sy < win->y + WINDOW_TITLE_BAR_HEIGHT) {
         /* Windows 11 Caption Controls:
@@ -348,18 +380,46 @@ void window_render(window_t* win, uint32_t* screen_buffer, uint32_t screen_pitch
         }
     }
 
-    /* Maximize [ □ ] button */
+    /* Maximize [ □ ] or Restore [ ❐ ] button */
     int max_btn_x = win->x + win->width - 72;
     int max_btn_w = 34;
     int max_box_x = max_btn_x + (max_btn_w - 10) / 2;
     int max_box_y = btn_cy - 5;
-    for (int r = max_box_y; r < max_box_y + 10; r++) {
-        if (r < clip_y || r >= clip_b) continue;
-        uint32_t* line = &screen_buffer[r * screen_pitch_dwords];
-        for (int c = max_box_x; c < max_box_x + 10; c++) {
-            if (c < clip_x || c >= clip_r) continue;
-            if (r == max_box_y || r == max_box_y + 9 || c == max_box_x || c == max_box_x + 9) {
-                line[c] = title_fg;
+
+    if (!win->is_maximized) {
+        /* Single square [ □ ] (10x10 outline) */
+        for (int r = max_box_y; r < max_box_y + 10; r++) {
+            if (r < clip_y || r >= clip_b) continue;
+            uint32_t* line = &screen_buffer[r * screen_pitch_dwords];
+            for (int c = max_box_x; c < max_box_x + 10; c++) {
+                if (c < clip_x || c >= clip_r) continue;
+                if (r == max_box_y || r == max_box_y + 9 || c == max_box_x || c == max_box_x + 9) {
+                    line[c] = title_fg;
+                }
+            }
+        }
+    } else {
+        /* Overlapping restore icon [ ❐ ]: Back offset square + Front square */
+        /* Back square: top-right (8x8) at (max_box_x + 2, max_box_y - 1) */
+        for (int r = max_box_y - 1; r < max_box_y + 7; r++) {
+            if (r < clip_y || r >= clip_b) continue;
+            uint32_t* line = &screen_buffer[r * screen_pitch_dwords];
+            for (int c = max_box_x + 2; c < max_box_x + 10; c++) {
+                if (c < clip_x || c >= clip_r) continue;
+                if (r == max_box_y - 1 || c == max_box_x + 9 || (r == max_box_y + 6 && c >= max_box_x + 7)) {
+                    line[c] = title_fg;
+                }
+            }
+        }
+        /* Front square: bottom-left (8x8) at (max_box_x - 1, max_box_y + 2) */
+        for (int r = max_box_y + 2; r < max_box_y + 10; r++) {
+            if (r < clip_y || r >= clip_b) continue;
+            uint32_t* line = &screen_buffer[r * screen_pitch_dwords];
+            for (int c = max_box_x - 1; c < max_box_x + 7; c++) {
+                if (c < clip_x || c >= clip_r) continue;
+                if (r == max_box_y + 2 || r == max_box_y + 9 || c == max_box_x - 1 || c == max_box_x + 6) {
+                    line[c] = title_fg;
+                }
             }
         }
     }
@@ -436,5 +496,61 @@ void window_render(window_t* win, uint32_t* screen_buffer, uint32_t screen_pitch
                 memcpy(dst_line, src_line, (size_t)render_w * sizeof(uint32_t));
             }
         }
+    }
+}
+
+/*
+ * window_resize:
+ * Updates the window outer and client dimensions, frees and reallocates the
+ * off-screen client buffer, and triggers the on_resize callback.
+ */
+void window_resize(window_t* win, int new_w, int new_h) {
+    if (!win) return;
+    if (new_w < 100) new_w = 100;
+    if (new_h < 60) new_h = 60;
+
+    /* Calculate new client dimensions */
+    int new_cw = new_w - (2 * WINDOW_BORDER_WIDTH);
+    int new_ch = new_h - WINDOW_TITLE_BAR_HEIGHT - WINDOW_BORDER_WIDTH;
+    if (new_cw < 10) new_cw = 10;
+    if (new_ch < 10) new_ch = 10;
+
+    /* Reallocate client surface pixel buffer */
+    size_t new_pixels = (size_t)new_cw * (size_t)new_ch;
+    uint32_t* new_buf = (uint32_t*)kmalloc(new_pixels * sizeof(uint32_t));
+    if (new_buf) {
+        if (win->client_buffer) {
+            kfree(win->client_buffer);
+        }
+        win->client_buffer = new_buf;
+        win->width = new_w;
+        win->height = new_h;
+        win->client_width = new_cw;
+        win->client_height = new_ch;
+        win->client_x = win->x + WINDOW_BORDER_WIDTH;
+        win->client_y = win->y + WINDOW_TITLE_BAR_HEIGHT;
+
+        window_clear_client(win, win->bg_color);
+    } else {
+        return;
+    }
+
+    /* Trigger window-specific relayout / redraw if window has on_resize callback */
+    if (win->on_resize) {
+        win->on_resize(win, new_w, new_h);
+    }
+}
+
+/*
+ * window_set_title:
+ * Updates the title string of a window.
+ */
+void window_set_title(window_t* win, const char* title) {
+    if (!win) return;
+    if (title) {
+        strncpy(win->title, title, WINDOW_TITLE_MAX - 1);
+        win->title[WINDOW_TITLE_MAX - 1] = '\0';
+    } else {
+        win->title[0] = '\0';
     }
 }

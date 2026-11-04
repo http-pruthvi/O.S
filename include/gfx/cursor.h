@@ -21,6 +21,15 @@
 #define CURSOR_WIDTH  12
 #define CURSOR_HEIGHT 19
 
+/* Cursor Shape / Mode Types */
+typedef enum {
+    CURSOR_TYPE_POINTER = 0,
+    CURSOR_TYPE_RESIZE_H,       /* Horizontal resize (<->) */
+    CURSOR_TYPE_RESIZE_V,       /* Vertical resize (^v) */
+    CURSOR_TYPE_RESIZE_DIAG_BR, /* Diagonal resize bottom-right (\) */
+    CURSOR_TYPE_RESIZE_DIAG_BL  /* Diagonal resize bottom-left (/) */
+} cursor_type_t;
+
 /* Initializes the cursor position and save-under buffer */
 void cursor_init(void);
 
@@ -29,6 +38,12 @@ void cursor_show(void);
 
 /* Hides the cursor (restores saved background pixels to VRAM) */
 void cursor_hide(void);
+
+/* Sets the active mouse cursor sprite type */
+void cursor_set_type(cursor_type_t type);
+
+/* Returns current cursor sprite type */
+cursor_type_t cursor_get_type(void);
 
 /* Moves cursor to (new_x, new_y), updating only the two 12x19 rectangles */
 void cursor_move(int new_x, int new_y);

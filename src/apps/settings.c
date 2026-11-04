@@ -310,7 +310,7 @@ void app_settings_open(void) {
 
     s_win_settings = window_create(140, 70, SETTINGS_WIN_W, SETTINGS_WIN_H,
                                    "System Settings & Control Center",
-                                   WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE);
+                                   WINDOW_FLAG_VISIBLE | WINDOW_FLAG_MOVABLE | WINDOW_FLAG_RESIZABLE);
     if (!s_win_settings) return;
 
     s_win_settings->on_close = on_settings_close;

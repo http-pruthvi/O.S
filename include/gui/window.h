@@ -23,7 +23,8 @@
 #define WINDOW_FLAG_VISIBLE       (1 << 0)
 #define WINDOW_FLAG_FOCUSED       (1 << 1)
 #define WINDOW_FLAG_MOVABLE       (1 << 2)
-#define WINDOW_FLAG_MINIMIZED     (1 << 3)
+#define WINDOW_FLAG_RESIZABLE     (1 << 3)
+#define WINDOW_FLAG_MINIMIZED     (1 << 4)
 
 /* Hit Test Region Codes */
 typedef enum {
@@ -33,7 +34,12 @@ typedef enum {
     WINDOW_HIT_MAX_BUTTON,
     WINDOW_HIT_MIN_BUTTON,
     WINDOW_HIT_CLIENT,
-    WINDOW_HIT_BORDER
+    WINDOW_HIT_BORDER,
+    WINDOW_HIT_RESIZE_LEFT,
+    WINDOW_HIT_RESIZE_RIGHT,
+    WINDOW_HIT_RESIZE_BOTTOM,
+    WINDOW_HIT_RESIZE_BOTTOM_RIGHT,
+    WINDOW_HIT_RESIZE_BOTTOM_LEFT
 } window_hit_t;
 
 /* Forward declaration */
@@ -55,6 +61,13 @@ typedef struct window {
     int client_y;
     int client_width;
     int client_height;
+
+    /* Maximize & Restore Geometry */
+    bool is_maximized;
+    int  restore_x;
+    int  restore_y;
+    int  restore_width;
+    int  restore_height;
 
     /* State flags (WINDOW_FLAG_*) */
     uint32_t flags;
@@ -78,6 +91,12 @@ typedef struct window {
 
     /* Optional user callback invoked when window client area is clicked */
     void (*on_click)(struct window* win, int rx, int ry);
+
+    /* Optional user callback invoked when window client area is right-clicked */
+    void (*on_right_click)(struct window* win, int rx, int ry);
+
+    /* Optional user callback invoked when window is resized */
+    void (*on_resize)(struct window* win, int new_w, int new_h);
 } window_t;
 
 /*
@@ -86,6 +105,12 @@ typedef struct window {
 
 /* Creates a new window with allocated client canvas */
 window_t* window_create(int x, int y, int width, int height, const char* title, uint32_t flags);
+
+/* Resizes window outer geometry, reallocates client buffer, and notifies on_resize */
+void window_resize(window_t* win, int new_w, int new_h);
+
+/* Updates the window title and invalidates the title bar */
+void window_set_title(window_t* win, const char* title);
 
 /* Destroys a window, frees its client buffer and associated resources */
 void window_destroy(window_t* win);

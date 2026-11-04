@@ -50,6 +50,42 @@ static inline uint8_t inb(uint16_t port) {
 }
 
 /*
+ * outw:
+ * Sends a 16-bit word value to an I/O port.
+ */
+static inline void outw(uint16_t port, uint16_t val) {
+    __asm__ volatile ("outw %0, %1" : : "a"(val), "Nd"(port));
+}
+
+/*
+ * inw:
+ * Reads a 16-bit word value from an I/O port.
+ */
+static inline uint16_t inw(uint16_t port) {
+    uint16_t ret;
+    __asm__ volatile ("inw %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
+}
+
+/*
+ * outl:
+ * Sends a 32-bit double-word value to an I/O port.
+ */
+static inline void outl(uint16_t port, uint32_t val) {
+    __asm__ volatile ("outl %0, %1" : : "a"(val), "Nd"(port));
+}
+
+/*
+ * inl:
+ * Reads a 32-bit double-word value from an I/O port.
+ */
+static inline uint32_t inl(uint16_t port) {
+    uint32_t ret;
+    __asm__ volatile ("inl %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
+}
+
+/*
  * io_wait:
  * Waits for an I/O operation to complete by writing to an unused port.
  *

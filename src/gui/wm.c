@@ -16,6 +16,8 @@
 #include "lib/kprintf.h"
 #include "lib/string.h"
 #include "apps/store.h"
+#include "apps/explorer.h"
+#include "gfx/cursor.h"
 
 extern void app_explorer_open(void);
 extern void app_terminal_open(void);
@@ -35,6 +37,17 @@ static bool      wm_drag_active   = false;
 static window_t* wm_drag_window   = NULL;
 static int       wm_drag_offset_x = 0;
 static int       wm_drag_offset_y = 0;
+
+/* Window resizing state */
+static bool      wm_resize_active  = false;
+static window_t* wm_resize_window  = NULL;
+static int       wm_resize_edge    = WINDOW_HIT_NONE;
+static int       wm_resize_start_x = 0;
+static int       wm_resize_start_y = 0;
+static int       wm_resize_orig_x  = 0;
+static int       wm_resize_orig_y  = 0;
+static int       wm_resize_orig_w  = 0;
+static int       wm_resize_orig_h  = 0;
 
 /* Mouse button tracking */
 static uint8_t   wm_prev_buttons  = 0;
@@ -171,10 +184,14 @@ void wm_remove_window(window_t* win) {
     int old_w = win->width;
     int old_h = win->height;
 
-    /* If this window was being dragged, cancel drag */
+    /* If this window was being dragged or resized, cancel operation */
     if (wm_drag_window == win) {
         wm_drag_active = false;
         wm_drag_window = NULL;
+    }
+    if (wm_resize_window == win) {
+        wm_resize_active = false;
+        wm_resize_window = NULL;
     }
 
     /* Detach from linked list */
@@ -532,6 +549,11 @@ void wm_invalidate_rect(int x, int y, int w, int h) {
     /* 7. Composite Toast Notifications if active */
     notification_render(backbuf, WM_SCREEN_WIDTH, WM_SCREEN_HEIGHT, theme_get_current());
 
+    /* 7.5 Composite File Explorer Context Menu popup if active */
+    if (explorer_context_menu_is_open()) {
+        explorer_context_menu_render(backbuf, WM_SCREEN_WIDTH, WM_SCREEN_HEIGHT);
+    }
+
     /* 8. Composite Legacy Start Menu if open and intersecting dirty rect */
     if (launcher_is_start_menu_open()) {
         launcher_render_start_menu(x, y, w, h);
@@ -567,9 +589,80 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
         return;
     }
 
-    bool left_pressed  = (ev->buttons & MOUSE_BTN_LEFT) && !(wm_prev_buttons & MOUSE_BTN_LEFT);
-    bool left_released = !(ev->buttons & MOUSE_BTN_LEFT) && (wm_prev_buttons & MOUSE_BTN_LEFT);
-    bool left_down     = (ev->buttons & MOUSE_BTN_LEFT) != 0;
+    bool left_pressed   = (ev->buttons & MOUSE_BTN_LEFT) && !(wm_prev_buttons & MOUSE_BTN_LEFT);
+    bool left_released  = !(ev->buttons & MOUSE_BTN_LEFT) && (wm_prev_buttons & MOUSE_BTN_LEFT);
+    bool left_down      = (ev->buttons & MOUSE_BTN_LEFT) != 0;
+
+    bool right_pressed  = (ev->buttons & MOUSE_BTN_RIGHT) && !(wm_prev_buttons & MOUSE_BTN_RIGHT);
+    bool right_released = !(ev->buttons & MOUSE_BTN_RIGHT) && (wm_prev_buttons & MOUSE_BTN_RIGHT);
+    bool right_down     = (ev->buttons & MOUSE_BTN_RIGHT) != 0;
+
+    (void)right_released;
+    (void)right_down;
+
+    /* Dynamic Cursor Shape Update on hover / active resize */
+    if (wm_resize_active) {
+        if (wm_resize_edge == WINDOW_HIT_RESIZE_LEFT || wm_resize_edge == WINDOW_HIT_RESIZE_RIGHT) {
+            cursor_set_type(CURSOR_TYPE_RESIZE_H);
+        } else if (wm_resize_edge == WINDOW_HIT_RESIZE_BOTTOM) {
+            cursor_set_type(CURSOR_TYPE_RESIZE_V);
+        } else if (wm_resize_edge == WINDOW_HIT_RESIZE_BOTTOM_RIGHT) {
+            cursor_set_type(CURSOR_TYPE_RESIZE_DIAG_BR);
+        } else if (wm_resize_edge == WINDOW_HIT_RESIZE_BOTTOM_LEFT) {
+            cursor_set_type(CURSOR_TYPE_RESIZE_DIAG_BL);
+        }
+    } else if (wm_drag_active) {
+        cursor_set_type(CURSOR_TYPE_POINTER);
+    } else if (wm_top_window && (wm_top_window->flags & WINDOW_FLAG_VISIBLE) && !(wm_top_window->flags & WINDOW_FLAG_MINIMIZED)) {
+        window_hit_t hover_hit = window_hit_test(wm_top_window, mx, my);
+        if (hover_hit == WINDOW_HIT_RESIZE_LEFT || hover_hit == WINDOW_HIT_RESIZE_RIGHT) {
+            cursor_set_type(CURSOR_TYPE_RESIZE_H);
+        } else if (hover_hit == WINDOW_HIT_RESIZE_BOTTOM) {
+            cursor_set_type(CURSOR_TYPE_RESIZE_V);
+        } else if (hover_hit == WINDOW_HIT_RESIZE_BOTTOM_RIGHT) {
+            cursor_set_type(CURSOR_TYPE_RESIZE_DIAG_BR);
+        } else if (hover_hit == WINDOW_HIT_RESIZE_BOTTOM_LEFT) {
+            cursor_set_type(CURSOR_TYPE_RESIZE_DIAG_BL);
+        } else {
+            cursor_set_type(CURSOR_TYPE_POINTER);
+        }
+    } else {
+        cursor_set_type(CURSOR_TYPE_POINTER);
+    }
+
+    /* Intercept clicks if File Explorer Context Menu is open */
+    if (explorer_context_menu_is_open()) {
+        if (left_pressed || right_pressed) {
+            if (explorer_context_menu_handle_click(mx, my, right_pressed)) {
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+        }
+    }
+
+    /* 0. Handle Right Click Down */
+    if (right_pressed) {
+        window_t* curr = wm_top_window;
+        while (curr) {
+            if ((curr->flags & WINDOW_FLAG_VISIBLE) && !(curr->flags & WINDOW_FLAG_MINIMIZED)) {
+                window_hit_t hit = window_hit_test(curr, mx, my);
+                if (hit == WINDOW_HIT_CLIENT) {
+                    if (curr != wm_top_window) {
+                        wm_bring_to_front(curr);
+                    }
+                    if (curr->on_right_click) {
+                        int rx = mx - curr->client_x;
+                        int ry = my - curr->client_y;
+                        curr->on_right_click(curr, rx, ry);
+                        wm_prev_buttons = ev->buttons;
+                        return;
+                    }
+                    break;
+                }
+            }
+            curr = curr->next;
+        }
+    }
 
     /* 1. Handle Left Click Down */
     if (left_pressed) {
@@ -735,7 +828,71 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
                 return;
             }
 
-            if (hit_type == WINDOW_HIT_TITLE_BAR && (hit_win->flags & WINDOW_FLAG_MOVABLE)) {
+            if (hit_type == WINDOW_HIT_MAX_BUTTON) {
+                if (!hit_win->is_maximized) {
+                    /* Save current geometry to restore later */
+                    hit_win->restore_x = hit_win->x;
+                    hit_win->restore_y = hit_win->y;
+                    hit_win->restore_width = hit_win->width;
+                    hit_win->restore_height = hit_win->height;
+
+                    int old_x = hit_win->x;
+                    int old_y = hit_win->y;
+                    int old_w = hit_win->width;
+                    int old_h = hit_win->height;
+
+                    /* Maximize: fill desktop above taskbar */
+                    hit_win->x = 0;
+                    hit_win->y = 0;
+                    hit_win->client_x = WINDOW_BORDER_WIDTH;
+                    hit_win->client_y = WINDOW_TITLE_BAR_HEIGHT;
+                    hit_win->is_maximized = true;
+
+                    window_resize(hit_win, WM_SCREEN_WIDTH, WM_TASKBAR_Y);
+                    wm_invalidate_rect(old_x, old_y, old_w, old_h);
+                    wm_invalidate_rect(0, 0, WM_SCREEN_WIDTH, WM_TASKBAR_Y);
+                } else {
+                    int old_x = hit_win->x;
+                    int old_y = hit_win->y;
+                    int old_w = hit_win->width;
+                    int old_h = hit_win->height;
+
+                    /* Restore to original window dimensions */
+                    hit_win->x = hit_win->restore_x;
+                    hit_win->y = hit_win->restore_y;
+                    hit_win->client_x = hit_win->restore_x + WINDOW_BORDER_WIDTH;
+                    hit_win->client_y = hit_win->restore_y + WINDOW_TITLE_BAR_HEIGHT;
+                    hit_win->is_maximized = false;
+
+                    window_resize(hit_win, hit_win->restore_width, hit_win->restore_height);
+                    wm_invalidate_rect(old_x, old_y, old_w, old_h);
+                    wm_invalidate_rect(hit_win->x, hit_win->y, hit_win->width, hit_win->height);
+                }
+                wm_redraw_all();
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+
+            /* Initiate interactive window border resizing */
+            if (hit_type == WINDOW_HIT_RESIZE_LEFT ||
+                hit_type == WINDOW_HIT_RESIZE_RIGHT ||
+                hit_type == WINDOW_HIT_RESIZE_BOTTOM ||
+                hit_type == WINDOW_HIT_RESIZE_BOTTOM_RIGHT ||
+                hit_type == WINDOW_HIT_RESIZE_BOTTOM_LEFT) {
+                wm_resize_active  = true;
+                wm_resize_window  = hit_win;
+                wm_resize_edge    = hit_type;
+                wm_resize_start_x = mx;
+                wm_resize_start_y = my;
+                wm_resize_orig_x  = hit_win->x;
+                wm_resize_orig_y  = hit_win->y;
+                wm_resize_orig_w  = hit_win->width;
+                wm_resize_orig_h  = hit_win->height;
+                wm_prev_buttons = ev->buttons;
+                return;
+            }
+
+            if (hit_type == WINDOW_HIT_TITLE_BAR && (hit_win->flags & WINDOW_FLAG_MOVABLE) && !hit_win->is_maximized) {
                 /* Initiate window dragging */
                 wm_drag_active = true;
                 wm_drag_window = hit_win;
@@ -791,16 +948,97 @@ void wm_handle_mouse(const mouse_event_t* ev, int mx, int my) {
         }
     }
 
+    /* 2.5 Handle Mouse Movement while Resizing */
+    if (wm_resize_active && wm_resize_window && left_down) {
+        int dx = mx - wm_resize_start_x;
+        int dy = my - wm_resize_start_y;
+        int min_w = 260;
+        int min_h = 180;
+
+        int new_x = wm_resize_orig_x;
+        int new_y = wm_resize_orig_y;
+        int new_w = wm_resize_orig_w;
+        int new_h = wm_resize_orig_h;
+
+        switch (wm_resize_edge) {
+            case WINDOW_HIT_RESIZE_RIGHT:
+                new_w = wm_resize_orig_w + dx;
+                if (new_x + new_w > WM_SCREEN_WIDTH) new_w = WM_SCREEN_WIDTH - new_x;
+                if (new_w < min_w) new_w = min_w;
+                break;
+            case WINDOW_HIT_RESIZE_BOTTOM:
+                new_h = wm_resize_orig_h + dy;
+                if (new_y + new_h > WM_TASKBAR_Y) new_h = WM_TASKBAR_Y - new_y;
+                if (new_h < min_h) new_h = min_h;
+                break;
+            case WINDOW_HIT_RESIZE_BOTTOM_RIGHT:
+                new_w = wm_resize_orig_w + dx;
+                if (new_x + new_w > WM_SCREEN_WIDTH) new_w = WM_SCREEN_WIDTH - new_x;
+                if (new_w < min_w) new_w = min_w;
+                new_h = wm_resize_orig_h + dy;
+                if (new_y + new_h > WM_TASKBAR_Y) new_h = WM_TASKBAR_Y - new_y;
+                if (new_h < min_h) new_h = min_h;
+                break;
+            case WINDOW_HIT_RESIZE_LEFT:
+                new_x = wm_resize_orig_x + dx;
+                if (new_x < 0) new_x = 0;
+                if (new_x > (wm_resize_orig_x + wm_resize_orig_w) - min_w) {
+                    new_x = (wm_resize_orig_x + wm_resize_orig_w) - min_w;
+                }
+                new_w = (wm_resize_orig_x + wm_resize_orig_w) - new_x;
+                break;
+            case WINDOW_HIT_RESIZE_BOTTOM_LEFT:
+                new_x = wm_resize_orig_x + dx;
+                if (new_x < 0) new_x = 0;
+                if (new_x > (wm_resize_orig_x + wm_resize_orig_w) - min_w) {
+                    new_x = (wm_resize_orig_x + wm_resize_orig_w) - min_w;
+                }
+                new_w = (wm_resize_orig_x + wm_resize_orig_w) - new_x;
+                new_h = wm_resize_orig_h + dy;
+                if (new_y + new_h > WM_TASKBAR_Y) new_h = WM_TASKBAR_Y - new_y;
+                if (new_h < min_h) new_h = min_h;
+                break;
+            default:
+                break;
+        }
+
+        if (new_w != wm_resize_window->width || new_h != wm_resize_window->height ||
+            new_x != wm_resize_window->x     || new_y != wm_resize_window->y) {
+            int old_x = wm_resize_window->x;
+            int old_y = wm_resize_window->y;
+            int old_w = wm_resize_window->width;
+            int old_h = wm_resize_window->height;
+
+            wm_resize_window->x = new_x;
+            wm_resize_window->y = new_y;
+            wm_resize_window->client_x = new_x + WINDOW_BORDER_WIDTH;
+            wm_resize_window->client_y = new_y + WINDOW_TITLE_BAR_HEIGHT;
+
+            window_resize(wm_resize_window, new_w, new_h);
+
+            int min_rx = min_val(old_x, new_x);
+            int min_ry = min_val(old_y, new_y);
+            int max_rx = max_val(old_x + old_w, new_x + new_w);
+            int max_ry = max_val(old_y + old_h, new_y + new_h);
+            wm_invalidate_rect(min_rx, min_ry, max_rx - min_rx, max_ry - min_ry);
+        }
+    }
+
     /* 3. Handle Left Click Release */
     if (left_released) {
         if (wm_drag_active) {
             wm_drag_active = false;
             wm_drag_window = NULL;
         }
+        if (wm_resize_active) {
+            wm_resize_active = false;
+            wm_resize_window = NULL;
+            cursor_set_type(CURSOR_TYPE_POINTER);
+        }
     }
 
     /* 4. Dispatch client mouse events to the focused window widgets */
-    if (!wm_drag_active && wm_top_window && (wm_top_window->flags & WINDOW_FLAG_VISIBLE)) {
+    if (!wm_drag_active && !wm_resize_active && wm_top_window && (wm_top_window->flags & WINDOW_FLAG_VISIBLE)) {
         int rx = mx - wm_top_window->client_x;
         int ry = my - wm_top_window->client_y;
         if (left_pressed && wm_top_window->on_click) {
@@ -828,10 +1066,10 @@ void wm_handle_keyboard(char c) {
 
 /*
  * wm_is_dragging:
- * Checks if a window dragging operation is currently taking place.
+ * Checks if a window dragging or resizing operation is currently taking place.
  */
 bool wm_is_dragging(void) {
-    return wm_drag_active;
+    return wm_drag_active || wm_resize_active;
 }
 
 /*

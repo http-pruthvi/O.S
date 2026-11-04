@@ -30,13 +30,106 @@ static const uint8_t cursor_bitmap[CURSOR_HEIGHT][CURSOR_WIDTH] = {
     { 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0 }  /* Row 18:         **   */
 };
 
+/* Horizontal Resize (<->) Cursor Bitmap */
+static const uint8_t cursor_bitmap_resize_h[CURSOR_HEIGHT][CURSOR_WIDTH] = {
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0 },
+    { 0, 1, 2, 1, 0, 0, 0, 0, 1, 2, 1, 0 },
+    { 1, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 1 },
+    { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1 },
+    { 1, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 1 },
+    { 0, 1, 2, 1, 0, 0, 0, 0, 1, 2, 1, 0 },
+    { 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+};
+
+/* Vertical Resize (^v) Cursor Bitmap */
+static const uint8_t cursor_bitmap_resize_v[CURSOR_HEIGHT][CURSOR_WIDTH] = {
+    { 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 1, 2, 2, 1, 0, 0, 0, 0 },
+    { 0, 0, 0, 1, 2, 2, 2, 2, 1, 0, 0, 0 },
+    { 0, 0, 1, 2, 2, 2, 2, 2, 2, 1, 0, 0 },
+    { 0, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 0 },
+    { 0, 0, 0, 0, 1, 2, 2, 1, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 1, 2, 2, 1, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 1, 2, 2, 1, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 1, 2, 2, 1, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 1, 2, 2, 1, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 1, 2, 2, 1, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 1, 2, 2, 1, 0, 0, 0, 0 },
+    { 0, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 0 },
+    { 0, 0, 1, 2, 2, 2, 2, 2, 2, 1, 0, 0 },
+    { 0, 0, 0, 1, 2, 2, 2, 2, 1, 0, 0, 0 },
+    { 0, 0, 0, 0, 1, 2, 2, 1, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+};
+
+/* Diagonal Bottom-Right Resize (\) Cursor Bitmap */
+static const uint8_t cursor_bitmap_resize_diag_br[CURSOR_HEIGHT][CURSOR_WIDTH] = {
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0 },
+    { 0, 1, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0 },
+    { 0, 1, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 1, 2, 1, 2, 1, 0, 0, 0, 0, 0, 0 },
+    { 0, 1, 1, 0, 1, 2, 1, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 1, 2, 1, 0, 1, 0 },
+    { 0, 0, 0, 0, 0, 1, 2, 1, 2, 1, 1, 0 },
+    { 0, 0, 0, 0, 0, 0, 1, 2, 2, 1, 0, 0 },
+    { 0, 0, 0, 0, 0, 1, 2, 2, 2, 1, 0, 0 },
+    { 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+};
+
+/* Diagonal Bottom-Left Resize (/) Cursor Bitmap */
+static const uint8_t cursor_bitmap_resize_diag_bl[CURSOR_HEIGHT][CURSOR_WIDTH] = {
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0 },
+    { 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 1, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 1, 0 },
+    { 0, 0, 0, 0, 0, 0, 1, 2, 1, 2, 1, 0 },
+    { 0, 0, 0, 0, 0, 1, 2, 1, 0, 1, 1, 0 },
+    { 0, 0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 1, 0, 1, 2, 1, 0, 0, 0, 0, 0, 0 },
+    { 0, 1, 1, 2, 1, 2, 1, 0, 0, 0, 0, 0 },
+    { 0, 0, 1, 2, 2, 1, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 1, 2, 2, 2, 1, 0, 0, 0, 0, 0 },
+    { 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+};
+
 /* Save-under RAM buffer holding the pixels obscured by the cursor */
 static uint32_t save_under[CURSOR_HEIGHT][CURSOR_WIDTH];
 
 /* Cursor state */
-static int  cursor_x = 512;
-static int  cursor_y = 384;
-static bool cursor_visible = false;
+static int           cursor_x = 512;
+static int           cursor_y = 384;
+static bool          cursor_visible = false;
+static cursor_type_t s_current_cursor_type = CURSOR_TYPE_POINTER;
 
 /*
  * save_background:
@@ -98,6 +191,21 @@ static void restore_background(void) {
 }
 
 /*
+ * get_active_bitmap:
+ * Selects the cursor matrix corresponding to the current cursor type.
+ */
+static const uint8_t (*get_active_bitmap(void))[CURSOR_WIDTH] {
+    switch (s_current_cursor_type) {
+        case CURSOR_TYPE_RESIZE_H:       return cursor_bitmap_resize_h;
+        case CURSOR_TYPE_RESIZE_V:       return cursor_bitmap_resize_v;
+        case CURSOR_TYPE_RESIZE_DIAG_BR: return cursor_bitmap_resize_diag_br;
+        case CURSOR_TYPE_RESIZE_DIAG_BL: return cursor_bitmap_resize_diag_bl;
+        case CURSOR_TYPE_POINTER:
+        default:                         return cursor_bitmap;
+    }
+}
+
+/*
  * draw_cursor:
  * Renders the 12x19 cursor sprite into VRAM, skipping transparent pixels.
  */
@@ -107,6 +215,7 @@ static void draw_cursor(void) {
 
     uint32_t pitch_dwords = fb->pitch / 4;
     uint32_t* vram = (uint32_t*)fb->virt_addr;
+    const uint8_t (*bmp)[CURSOR_WIDTH] = get_active_bitmap();
 
     for (int r = 0; r < CURSOR_HEIGHT; r++) {
         int py = cursor_y + r;
@@ -120,7 +229,7 @@ static void draw_cursor(void) {
                 continue;
             }
 
-            uint8_t pixel_type = cursor_bitmap[r][c];
+            uint8_t pixel_type = bmp[r][c];
             if (pixel_type == 1) {
                 vram[(uint32_t)py * pitch_dwords + (uint32_t)px] = GFX_COLOR_BLACK;
             } else if (pixel_type == 2) {
@@ -235,4 +344,29 @@ bool cursor_overlaps_rect(int x, int y, int w, int h) {
             x + w > cursor_x &&
             y < cursor_y + CURSOR_HEIGHT &&
             y + h > cursor_y);
+}
+
+/*
+ * cursor_set_type:
+ * Switches the active cursor sprite shape (e.g. pointer vs resize bidirectional arrows).
+ */
+void cursor_set_type(cursor_type_t type) {
+    if (type == s_current_cursor_type) return;
+
+    if (cursor_visible) {
+        restore_background();
+    }
+    s_current_cursor_type = type;
+    if (cursor_visible) {
+        save_background();
+        draw_cursor();
+    }
+}
+
+/*
+ * cursor_get_type:
+ * Returns the active cursor sprite shape type.
+ */
+cursor_type_t cursor_get_type(void) {
+    return s_current_cursor_type;
 }
