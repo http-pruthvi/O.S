@@ -295,7 +295,7 @@ bool widget_dispatch_mouse(window_t* win, int rx, int ry, bool left_down, bool l
                 if (inside && curr->on_click) {
                     curr->on_click(curr, curr->user_data);
                 }
-                handled = true;
+                return true; /* Window or widget may have been closed/destroyed */
             } else if (curr->pressed && !inside && left_down) {
                 curr->pressed = false;
                 widget_render(curr);

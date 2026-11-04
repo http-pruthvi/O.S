@@ -256,6 +256,9 @@ void kfree(void* ptr) {
             if (block->next) {
                 block->next->prev = prev;
             }
+            /* Invalidate swallowed block header to prevent false double-free detection */
+            block->magic = 0;
+            block->is_free = 0;
         }
     }
 

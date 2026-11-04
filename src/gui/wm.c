@@ -152,6 +152,20 @@ void wm_add_window(window_t* win) {
 void wm_remove_window(window_t* win) {
     if (!win) return;
 
+    /* Guard: Verify win is actually in the window manager list */
+    bool found = false;
+    window_t* check = wm_top_window;
+    while (check) {
+        if (check == win) {
+            found = true;
+            break;
+        }
+        check = check->next;
+    }
+    if (!found) {
+        return; /* Window was already removed or never tracked */
+    }
+
     int old_x = win->x;
     int old_y = win->y;
     int old_w = win->width;
@@ -385,8 +399,8 @@ void wm_render_taskbar(int clip_x, int clip_y, int clip_w, int clip_h) {
     /* Collect windows and draw in bottom-to-top order */
     window_t* curr = wm_bottom_window;
     while (curr) {
-        if (tab_x + tab_w > WM_SCREEN_WIDTH - 240) {
-            break; /* Clean margin before Friday AI tray chip at 794 */
+        if (tab_x + tab_w > WM_SCREEN_WIDTH - 260) {
+            break; /* Clean margin before Friday AI tray chip at 774 */
         }
 
         if (tab_x < clip_r && tab_x + tab_w > clip_x && btn_y < clip_b && btn_y + tab_h > clip_y) {
@@ -424,7 +438,7 @@ void wm_render_taskbar(int clip_x, int clip_y, int clip_w, int clip_h) {
 
     /* 4. Draw System Tray (Right side) */
     /* Friday AI System Tray Status Chip */
-    int friday_chip_x = WM_SCREEN_WIDTH - 230;
+    int friday_chip_x = WM_SCREEN_WIDTH - 250;
     int friday_chip_y = WM_TASKBAR_Y + 7;
     int friday_chip_w = 98;
     int friday_chip_h = 26;
@@ -437,9 +451,9 @@ void wm_render_taskbar(int clip_x, int clip_y, int clip_w, int clip_h) {
     }
 
     /* System Tray Digital Clock */
-    int clock_x = WM_SCREEN_WIDTH - 120;
+    int clock_x = WM_SCREEN_WIDTH - 140;
     int clock_y = WM_TASKBAR_Y + 12;
-    if (clock_x < clip_r && clock_x + 115 > clip_x) {
+    if (clock_x < clip_r && clock_x + 130 > clip_x) {
         char clock_buf[16];
         timer_format_clock(clock_buf);
         gfx_draw_string(clock_x, clock_y, clock_buf, 0x00FFFFFF, tb_bg, true);

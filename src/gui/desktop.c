@@ -49,6 +49,19 @@ static widget_t* lbl_tasks     = NULL;
 
 /* Reference to Window 3 */
 static window_t* win_about = NULL;
+static bool s_desktop_running = false;
+
+bool desktop_is_running(void) {
+    return s_desktop_running;
+}
+
+static void on_about_win_close(window_t* win) {
+    (void)win;
+    if (win_about) {
+        wm_remove_window(win_about);
+        win_about = NULL;
+    }
+}
 
 /* Helper to convert integer to decimal string */
 static void int_to_str(int val, char* buf) {
@@ -277,6 +290,7 @@ static void setup_showcase_windows(void) {
 
         widget_t* btn_ok = widget_create_button(160, 195, 120, 32, "Dismiss", on_btn_about_close, NULL);
         widget_add_to_window(win_about, btn_ok);
+        win_about->on_close = on_about_win_close;
 
         wm_add_window(win_about);
     }
@@ -297,6 +311,8 @@ void app_showcase_open(void) {
  */
 void desktop_run(void) {
     serial_writestring("[DESKTOP] Launching Desktop Window Manager environment...\n");
+
+    s_desktop_running = true;
 
     /* 1. Initialize Window Manager and allocate back buffer */
     if (!wm_init()) {

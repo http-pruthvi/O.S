@@ -59,6 +59,24 @@ typedef struct {
 static window_t* s_win_sysmon = NULL;
 static window_t* s_win_about  = NULL;
 
+/* Callback for Sysmon Window Close */
+static void on_sysmon_close(window_t* win) {
+    (void)win;
+    if (s_win_sysmon) {
+        wm_remove_window(s_win_sysmon);
+        s_win_sysmon = NULL;
+    }
+}
+
+/* Callback for About Window Close */
+static void on_about_close(window_t* win) {
+    (void)win;
+    if (s_win_about) {
+        wm_remove_window(s_win_about);
+        s_win_about = NULL;
+    }
+}
+
 /* Helper to convert integer to string */
 static void int_to_str(int val, char* buf) {
     int idx = 0;
@@ -153,6 +171,7 @@ void launcher_launch_sysmon(void) {
     widget_t* btn_refresh = widget_create_button(20, 220, 180, 32, "Refresh Metrics", on_btn_refresh_sysmon, s_mon_labels);
     widget_add_to_window(s_win_sysmon, btn_refresh);
 
+    s_win_sysmon->on_close = on_sysmon_close;
     wm_add_window(s_win_sysmon);
 }
 
@@ -197,6 +216,7 @@ void launcher_launch_about(void) {
     widget_t* btn_ok = widget_create_button(160, 195, 120, 32, "Dismiss", on_btn_about_dismiss, NULL);
     widget_add_to_window(s_win_about, btn_ok);
 
+    s_win_about->on_close = on_about_close;
     wm_add_window(s_win_about);
 }
 

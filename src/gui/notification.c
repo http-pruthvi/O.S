@@ -5,7 +5,7 @@
 #include "gfx/font.h"
 #include "lib/string.h"
 
-#define TOAST_W 240
+#define TOAST_W 280
 #define TOAST_H 54
 #define TOAST_INITIAL_TICKS 350
 
@@ -127,11 +127,30 @@ void notification_render(uint32_t* backbuf, uint32_t fb_width, uint32_t fb_heigh
     gfx_fill_rect(badge_x, badge_y, badge_w, 16, accent_color);
     gfx_draw_string(badge_x + 4, badge_y, badge_text, 0x0011111B, 0, true);
 
-    /* Title Text */
-    gfx_draw_string(badge_x + badge_w + 8, badge_y, s_active_toast.title, 0x00FFFFFF, 0, true);
+    /* Title Text (strictly clipped inside card) */
+    char title_buf[32];
+    int title_max_chars = (x + TOAST_W - 8 - (badge_x + badge_w + 8)) / 8;
+    if (title_max_chars < 0) title_max_chars = 0;
+    if (title_max_chars > 30) title_max_chars = 30;
+    int ti = 0;
+    while (s_active_toast.title[ti] && ti < title_max_chars) {
+        title_buf[ti] = s_active_toast.title[ti];
+        ti++;
+    }
+    title_buf[ti] = '\0';
+    gfx_draw_string(badge_x + badge_w + 8, badge_y, title_buf, 0x00FFFFFF, 0, true);
 
-    /* Message Body */
-    gfx_draw_string(x + 10, y + 28, s_active_toast.message, 0x00CDD6F4, 0, true);
+    /* Message Body (strictly clipped to card boundaries) */
+    char msg_buf[48];
+    int msg_max_chars = (TOAST_W - 20) / 8;
+    if (msg_max_chars > 46) msg_max_chars = 46;
+    int mi = 0;
+    while (s_active_toast.message[mi] && mi < msg_max_chars) {
+        msg_buf[mi] = s_active_toast.message[mi];
+        mi++;
+    }
+    msg_buf[mi] = '\0';
+    gfx_draw_string(x + 10, y + 28, msg_buf, 0x00CDD6F4, 0, true);
 
     /* Subtle Animated Progress / Decay Bar at Bottom of Card */
     int bar_w = ((TOAST_W - 2) * s_active_toast.ticks_remaining) / TOAST_INITIAL_TICKS;

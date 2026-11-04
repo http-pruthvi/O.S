@@ -72,7 +72,13 @@ static store_app_t s_catalog[] = {
 };
 #define NUM_CATALOG_APPS (int)(sizeof(s_catalog) / sizeof(s_catalog[0]))
 
-static window_t* s_win_store = NULL;
+static window_t* s_win_store   = NULL;
+static window_t* s_win_browser = NULL;
+static window_t* s_win_hex     = NULL;
+static window_t* s_win_notes   = NULL;
+static window_t* s_win_irc     = NULL;
+static window_t* s_win_bench   = NULL;
+static window_t* s_win_mandel  = NULL;
 static int s_store_tab = 0; /* 0: Featured Catalog, 1: Custom Web URL */
 static widget_t* s_txt_url = NULL;
 static widget_t* s_txt_name = NULL;
@@ -258,8 +264,72 @@ bool app_store_install_custom_url(const char* url, const char* name) {
  * Web App Implementations (Running mini-applications)
  * -------------------------------------------------------------------------- */
 
+/* Window Close Callbacks */
+static void on_browser_close(window_t* win) {
+    (void)win;
+    if (s_win_browser) {
+        wm_remove_window(s_win_browser);
+        s_win_browser = NULL;
+    }
+}
+
+static void on_hex_close(window_t* win) {
+    (void)win;
+    if (s_win_hex) {
+        wm_remove_window(s_win_hex);
+        s_win_hex = NULL;
+    }
+}
+
+static void on_btn_hex_close(widget_t* w, void* data) {
+    (void)w; (void)data;
+    if (s_win_hex) {
+        wm_remove_window(s_win_hex);
+        s_win_hex = NULL;
+    }
+}
+
+static void on_notes_close(window_t* win) {
+    (void)win;
+    if (s_win_notes) {
+        wm_remove_window(s_win_notes);
+        s_win_notes = NULL;
+    }
+}
+
+static void on_irc_close(window_t* win) {
+    (void)win;
+    if (s_win_irc) {
+        wm_remove_window(s_win_irc);
+        s_win_irc = NULL;
+    }
+}
+
+static void on_bench_close(window_t* win) {
+    (void)win;
+    if (s_win_bench) {
+        wm_remove_window(s_win_bench);
+        s_win_bench = NULL;
+    }
+}
+
+static void on_mandel_close(window_t* win) {
+    (void)win;
+    if (s_win_mandel) {
+        wm_remove_window(s_win_mandel);
+        s_win_mandel = NULL;
+    }
+}
+
+static void on_store_close(window_t* win) {
+    (void)win;
+    if (s_win_store) {
+        wm_remove_window(s_win_store);
+        s_win_store = NULL;
+    }
+}
+
 /* 1. Web Browser Lite */
-static window_t* s_win_browser = NULL;
 static void launch_web_browser(void) {
     if (s_win_browser) {
         wm_bring_to_front(s_win_browser);
@@ -301,11 +371,11 @@ static void launch_web_browser(void) {
 
     window_draw_string(s_win_browser, 30, 320, "Status: Online | Storage: RamFS (128 MB)", 0x0034D399, 0x00181818, true);
 
+    s_win_browser->on_close = on_browser_close;
     wm_add_window(s_win_browser);
 }
 
 /* 2. Hex Editor Pro */
-static window_t* s_win_hex = NULL;
 static void launch_hex_editor(void) {
     if (s_win_hex) {
         wm_bring_to_front(s_win_hex);
@@ -340,14 +410,14 @@ static void launch_hex_editor(void) {
         window_draw_string(s_win_hex, 25, 48 + i * 22, hex_rows[i], 0x00CBD5E1, 0x000F172A, true);
     }
 
-    widget_t* btn_close = widget_create_button(470, 330, 90, 26, "Close", NULL, NULL);
+    widget_t* btn_close = widget_create_button(470, 330, 90, 26, "Close", on_btn_hex_close, NULL);
     widget_add_to_window(s_win_hex, btn_close);
 
+    s_win_hex->on_close = on_hex_close;
     wm_add_window(s_win_hex);
 }
 
 /* 3. Markdown Notes */
-static window_t* s_win_notes = NULL;
 static void launch_markdown_notes(void) {
     if (s_win_notes) {
         wm_bring_to_front(s_win_notes);
@@ -373,11 +443,11 @@ static void launch_markdown_notes(void) {
     window_draw_string(s_win_notes, 25, 215, "Author: Pruthviraj Vinod Phuse (B.Tech Final Year)", 0x00F9E2AF, 0x001E1E2E, true);
     window_draw_string(s_win_notes, 25, 240, "Status: All verification tests PASSED (5/5 Playwright)", 0x00A6E3A1, 0x001E1E2E, true);
 
+    s_win_notes->on_close = on_notes_close;
     wm_add_window(s_win_notes);
 }
 
 /* 4. IRC Chat Client */
-static window_t* s_win_irc = NULL;
 static void launch_irc_client(void) {
     if (s_win_irc) {
         wm_bring_to_front(s_win_irc);
@@ -404,11 +474,11 @@ static void launch_irc_client(void) {
     widget_t* btn_send = widget_create_button(430, 290, 80, 28, "Send", NULL, NULL);
     widget_add_to_window(s_win_irc, btn_send);
 
+    s_win_irc->on_close = on_irc_close;
     wm_add_window(s_win_irc);
 }
 
 /* 5. System Benchmark */
-static window_t* s_win_bench = NULL;
 static void on_btn_run_bench(widget_t* w, void* data);
 
 static void launch_system_benchmark(void) {
@@ -434,6 +504,7 @@ static void launch_system_benchmark(void) {
     widget_t* btn_run = widget_create_button(25, 255, 160, 32, "Run Benchmark", on_btn_run_bench, NULL);
     widget_add_to_window(s_win_bench, btn_run);
 
+    s_win_bench->on_close = on_bench_close;
     wm_add_window(s_win_bench);
 }
 
@@ -466,7 +537,6 @@ static void on_btn_run_bench(widget_t* w, void* data) {
 }
 
 /* 6. Mandelbrot Explorer */
-static window_t* s_win_mandel = NULL;
 static void launch_mandelbrot_explorer(void) {
     if (s_win_mandel) {
         wm_bring_to_front(s_win_mandel);
@@ -506,6 +576,7 @@ static void launch_mandelbrot_explorer(void) {
         }
     }
 
+    s_win_mandel->on_close = on_mandel_close;
     wm_add_window(s_win_mandel);
 }
 
@@ -701,5 +772,6 @@ void app_store_open(void) {
     widget_add_to_window(s_win_store, btn_dl);
 
     store_render_catalog_cards();
+    s_win_store->on_close = on_store_close;
     wm_add_window(s_win_store);
 }

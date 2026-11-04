@@ -11,7 +11,12 @@
  * window dragging, z-order focus, and taskbar management.
  */
 
+#include "lib/types.h"
+
 /* Launches the desktop window manager environment; exits back to console on ESC */
 void desktop_run(void);
+
+/* Returns true if the graphical desktop event loop is currently active */
+bool desktop_is_running(void);
 
 #endif /* GUI_DESKTOP_H */

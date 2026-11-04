@@ -1,6 +1,7 @@
 #include "drivers/vga.h"
 #include "gfx/fb.h"
 #include "gfx/fb_console.h"
+#include "gui/desktop.h"
 #include "lib/io.h"
 #include "lib/string.h"
 
@@ -168,7 +169,9 @@ void vga_init(void) {
  */
 void vga_putchar(char c) {
     if (fb_is_active()) {
-        fb_console_putchar(c);
+        if (!desktop_is_running()) {
+            fb_console_putchar(c);
+        }
         return;
     }
 
@@ -257,7 +260,9 @@ void vga_put_at(size_t x, size_t y, const char* str, uint8_t color) {
     }
 
     if (fb_is_active()) {
-        fb_console_put_at(x, y, str, color);
+        if (!desktop_is_running()) {
+            fb_console_put_at(x, y, str, color);
+        }
         return;
     }
 
